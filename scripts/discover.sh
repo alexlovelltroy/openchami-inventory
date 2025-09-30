@@ -104,3 +104,7 @@ echo
 echo "❓ Need help? Check the templates in pkg/codegen/templates/"
 echo "   Each template is a separate file for easier editing."
 echo "   Use 'make templates' to view template content."
+echo ""
+echo "🔧 Storage System: Interface-based with pluggable backends"
+echo "   Default: File-based storage in ./inventory/"
+echo "   See: internal/storage/README.md for details"
