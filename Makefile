@@ -1,4 +1,30 @@
-.PHONY: generate clean build test
+.PHONY: generate clean build test discover help templates
+
+# Default target - show help
+help:
+	@echo "OpenCHAMI Inventory Development Commands"
+	@echo "======================================="
+	@echo "  make dev        - Full development build (generate + build + test)"
+	@echo "  make discover   - Show codebase structure and status"
+	@echo "  make templates  - View code generation templates"
+	@echo "  make generate   - Generate all code (server, storage, client)"
+	@echo "  make build      - Build all binaries"
+	@echo "  make test       - Run tests"
+	@echo "  make clean      - Clean generated files"
+	@echo ""
+	@echo "For detailed documentation: ./scripts/discover.sh"
+	@echo "To understand code generation: ./scripts/templates.sh"
+
+# Development workflow - generates, builds, and tests
+dev: generate post-generate build test
+
+# Show codebase structure and status
+discover:
+	@./scripts/discover.sh
+
+# View code generation templates
+templates:
+	@./scripts/templates.sh
 
 # Generate all code
 generate: generate-storage generate-server generate-client
