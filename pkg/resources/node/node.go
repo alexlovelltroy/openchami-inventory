@@ -1,8 +1,12 @@
-package resources
+package node
+
+import (
+	"github.com/openchami/inventory/pkg/resources"
+)
 
 // Node represents a physical or virtual machine
 type Node struct {
-	Resource
+	resources.Resource
 	Spec   NodeSpec   `json:"spec" yaml:"spec"`
 	Status NodeStatus `json:"status,omitempty" yaml:"status,omitempty"`
 }
@@ -36,9 +40,26 @@ type NodeSpec struct {
 
 // NodeStatus defines the observed state of Node
 type NodeStatus struct {
-	PowerState  string      `json:"powerState,omitempty" yaml:"powerState,omitempty"`
-	Online      bool        `json:"online" yaml:"online"`
-	LastBooted  string      `json:"lastBooted,omitempty" yaml:"lastBooted,omitempty"`
-	HealthState string      `json:"healthState,omitempty" yaml:"healthState,omitempty"` // "healthy", "degraded", "failed"
-	Conditions  []Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
+	PowerState  string                `json:"powerState,omitempty" yaml:"powerState,omitempty"`
+	Online      bool                  `json:"online" yaml:"online"`
+	LastBooted  string                `json:"lastBooted,omitempty" yaml:"lastBooted,omitempty"`
+	HealthState string                `json:"healthState,omitempty" yaml:"healthState,omitempty"` // "healthy", "degraded", "failed"
+	Conditions  []resources.Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
+}
+
+// Request types for code generation
+type CreateNodeRequest struct {
+	Name        string            `json:"name" validate:"required"`
+	Hostname    string            `json:"hostname" validate:"required"`
+	BMCUID      string            `json:"bmcUid,omitempty"`
+	Labels      map[string]string `json:"labels,omitempty"`
+	Annotations map[string]string `json:"annotations,omitempty"`
+}
+
+type UpdateNodeRequest struct {
+	Name        string            `json:"name,omitempty"`
+	Hostname    string            `json:"hostname,omitempty"`
+	BMCUID      string            `json:"bmcUid,omitempty"`
+	Labels      map[string]string `json:"labels,omitempty"`
+	Annotations map[string]string `json:"annotations,omitempty"`
 }
