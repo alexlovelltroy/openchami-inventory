@@ -1,4 +1,4 @@
-.PHONY: generate clean build test discover help templates
+.PHONY: generate clean build test discover help templates demo
 
 # Default target - show help
 help:
@@ -7,6 +7,7 @@ help:
 	@echo "  make dev        - Full development build (generate + build + test)"
 	@echo "  make discover   - Show codebase structure and status"
 	@echo "  make templates  - View code generation templates"
+	@echo "  make demo       - Run multi-version support demonstration"
 	@echo "  make generate   - Generate all code (server, storage, client)"
 	@echo "  make build      - Build all binaries"
 	@echo "  make test       - Run tests"
@@ -81,6 +82,7 @@ build: generate post-generate
 	go build -o bin/server ./cmd/server
 	go build -o bin/crawler ./cmd/crawler
 	go build -o bin/codegen ./cmd/codegen
+	go build -o bin/version-demo ./cmd/version-demo
 
 # Test everything
 test: generate post-generate
@@ -90,7 +92,13 @@ test: generate post-generate
 dev: clean generate post-generate build test
 	@echo "Development build complete!"
 
+# Run multi-version support demonstration
+demo:
+	@echo "Running multi-version support demo..."
+	go run ./cmd/version-demo
+
 # Install tools
 install-tools:
 	go install ./cmd/codegen
 	go install ./cmd/crawler
+	go install ./cmd/version-demo

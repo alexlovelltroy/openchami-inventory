@@ -42,6 +42,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/openchami/inventory/pkg/versioning"
 	"golang.org/x/text/cases"
 )
 
@@ -58,6 +59,11 @@ type ResourceMetadata struct {
 	StorageName  string            // e.g., "BMC" or "BootConfig" for storage function names
 	Tags         map[string]string // Additional metadata
 	RequiresAuth bool              // Whether this resource requires authentication
+
+	// Multi-version support
+	Versions        []versioning.SchemaVersion // Multiple schema versions
+	DefaultVersion  string                     // Default schema version
+	APIGroupVersion string                     // API group version (e.g., "v2")
 }
 
 // Generator handles code generation for resources
@@ -130,21 +136,79 @@ func (g *Generator) RegisterResource(resourceType interface{}) error {
 		typePrefix = "resources"
 	}
 
+	// Initialize default version metadata
+	defaultVersion := versioning.SchemaVersion{
+		Version:    "v1",
+		IsDefault:  true,
+		Stability:  "stable",
+		Deprecated: false,
+		SpecType:   fmt.Sprintf("%s.%s", typePrefix, specTypeName),
+		StatusType: fmt.Sprintf("%s.%sStatus", typePrefix, name),
+		TypeName:   fmt.Sprintf("*%s.%s", typePrefix, name),
+		Package:    packageImport,
+		Transforms: []string{},
+	}
+
 	metadata := ResourceMetadata{
-		Name:         name,
-		PluralName:   pluralName,
-		Package:      packageImport,
-		PackageAlias: typePrefix,
-		TypeName:     fmt.Sprintf("*%s.%s", typePrefix, name),
-		SpecType:     fmt.Sprintf("%s.%s", typePrefix, specTypeName),
-		StatusType:   fmt.Sprintf("%s.%sStatus", typePrefix, name),
-		URLPath:      fmt.Sprintf("/%s", pluralName),
-		StorageName:  storageName,
-		Tags:         make(map[string]string),
+		Name:            name,
+		PluralName:      pluralName,
+		Package:         packageImport,
+		PackageAlias:    typePrefix,
+		TypeName:        fmt.Sprintf("*%s.%s", typePrefix, name),
+		SpecType:        fmt.Sprintf("%s.%s", typePrefix, specTypeName),
+		StatusType:      fmt.Sprintf("%s.%sStatus", typePrefix, name),
+		URLPath:         fmt.Sprintf("/%s", pluralName),
+		StorageName:     storageName,
+		Tags:            make(map[string]string),
+		Versions:        []versioning.SchemaVersion{defaultVersion},
+		DefaultVersion:  "v1",
+		APIGroupVersion: "v1", // Default API group version
 	}
 
 	g.Resources = append(g.Resources, metadata)
 	return nil
+}
+
+// AddResourceVersion adds a new schema version to an existing resource
+func (g *Generator) AddResourceVersion(resourceName string, version versioning.SchemaVersion) error {
+	for i, resource := range g.Resources {
+		if resource.Name == resourceName {
+			// Check if version already exists
+			for _, existingVersion := range resource.Versions {
+				if existingVersion.Version == version.Version {
+					return fmt.Errorf("version %s already exists for resource %s", version.Version, resourceName)
+				}
+			}
+
+			// Add the new version
+			g.Resources[i].Versions = append(g.Resources[i].Versions, version)
+
+			// Update default if this version is marked as default
+			if version.IsDefault {
+				g.Resources[i].DefaultVersion = version.Version
+			}
+
+			return nil
+		}
+	}
+	return fmt.Errorf("resource %s not found", resourceName)
+}
+
+// SetAPIGroupVersion sets the API group version for all resources
+func (g *Generator) SetAPIGroupVersion(apiGroupVersion string) {
+	for i := range g.Resources {
+		g.Resources[i].APIGroupVersion = apiGroupVersion
+	}
+}
+
+// GetResourceByName returns the metadata for a specific resource
+func (g *Generator) GetResourceByName(name string) (*ResourceMetadata, bool) {
+	for i, resource := range g.Resources {
+		if resource.Name == name {
+			return &g.Resources[i], true
+		}
+	}
+	return nil, false
 }
 
 // EnableAuthForResource enables authentication for a specific resource type

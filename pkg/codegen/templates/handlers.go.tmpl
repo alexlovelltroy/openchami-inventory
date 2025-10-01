@@ -28,6 +28,7 @@ import (
 	"{{.Package}}"
 	"{{.ModulePath}}/internal/storage"
 	"{{.ModulePath}}/pkg/resources"
+	"{{.ModulePath}}/pkg/versioning"
 )
 
 // Get{{.Name}}s returns all {{.Name}} resources
@@ -119,6 +120,9 @@ func Create{{.Name}}(c fuego.ContextWithBody[Create{{.Name}}Request]) ({{.TypeNa
 		}
 	}
 
+	// Get version context from request
+	versionCtx := versioning.GetVersionContext(c.Context())
+
 	uid, err := resources.GenerateUIDForResource("{{.Name}}")
 	if err != nil {
 		return nil, fuego.HTTPError{
@@ -129,9 +133,9 @@ func Create{{.Name}}(c fuego.ContextWithBody[Create{{.Name}}Request]) ({{.TypeNa
 
 	{{camelCase .Name}} := &{{.PackageAlias}}.{{.Name}}{
 		Resource: resources.Resource{
-			APIVersion:    "v1",
+			APIVersion:    versionCtx.GroupVersion,
 			Kind:          "{{.Name}}",
-			SchemaVersion: "1.0",
+			SchemaVersion: versionCtx.ServeVersion,
 		},
 		// Spec: TODO: Convert from req
 	}
