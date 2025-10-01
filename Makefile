@@ -8,7 +8,7 @@ help:
 	@echo "  make discover   - Show codebase structure and status"
 	@echo "  make templates  - View code generation templates"
 	@echo "  make demo       - Run multi-version support demonstration"
-	@echo "  make generate   - Generate all code (server, storage, client)"
+	@echo "  make generate   - Generate all code (server, storage, client, CLI)"
 	@echo "  make build      - Build all binaries"
 	@echo "  make test       - Run tests"
 	@echo "  make clean      - Clean generated files"
@@ -28,7 +28,7 @@ templates:
 	@./scripts/templates.sh
 
 # Generate all code
-generate: generate-storage generate-server generate-client
+generate: generate-storage generate-server generate-client generate-client-cmd
 
 # Generate server code with storage
 generate-server:
@@ -62,13 +62,25 @@ generate-client:
 		-module=github.com/openchami/inventory \
 		-tidy=false
 
+# Generate client CLI command
+generate-client-cmd:
+	@echo "Generating client CLI..."
+	@mkdir -p cmd/inventory-cli
+	go run cmd/codegen/main.go \
+		-type=client-cmd \
+		-output=./cmd/inventory-cli \
+		-package=main \
+		-module=github.com/openchami/inventory \
+		-tidy=false
+
 # Clean generated files
 clean:
 	@echo "Cleaning generated files..."
 	rm -f cmd/server/*_generated.go
-	rm -f cmd/server/handlers_*.go
-	rm -f pkg/client/*.go
+	
+	rm -f pkg/client/*_generated.go
 	rm -f internal/storage/*_generated.go
+	rm -rf cmd/inventory-cli/*_generated.go
 
 # Post-generation cleanup
 post-generate:
@@ -83,6 +95,7 @@ build: generate post-generate
 	go build -o bin/crawler ./cmd/crawler
 	go build -o bin/codegen ./cmd/codegen
 	go build -o bin/version-demo ./cmd/version-demo
+	go build -o bin/inventory-cli ./cmd/inventory-cli
 
 # Test everything
 test: generate post-generate

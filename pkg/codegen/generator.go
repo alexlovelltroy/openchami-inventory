@@ -317,7 +317,7 @@ func (g *Generator) GenerateClientModels() error {
 		return fmt.Errorf("failed to format generated client models code: %w", err)
 	}
 
-	filename := filepath.Join(g.OutputDir, "models.go")
+	filename := filepath.Join(g.OutputDir, "models_generated.go")
 	if err := os.WriteFile(filename, formatted, 0644); err != nil {
 		return fmt.Errorf("failed to write client models file: %w", err)
 	}
@@ -337,6 +337,7 @@ func (g *Generator) LoadTemplates() error {
 		"models":       "models.go.tmpl",
 		"client":       "client.go.tmpl",
 		"policies":     "policies.go.tmpl",
+		"clientCmd":    "client-cmd.go.tmpl",
 	}
 
 	g.Templates = make(map[string]*template.Template)
@@ -412,7 +413,7 @@ func (g *Generator) GenerateClient() error {
 		return fmt.Errorf("failed to format generated client code: %w", err)
 	}
 
-	filename := filepath.Join(g.OutputDir, "client.go")
+	filename := filepath.Join(g.OutputDir, "client_generated.go")
 	if err := os.WriteFile(filename, formatted, 0644); err != nil {
 		return fmt.Errorf("failed to write client file: %w", err)
 	}
@@ -505,6 +506,36 @@ func (g *Generator) GeneratePolicies() error {
 	filename := filepath.Join(g.OutputDir, "policies_generated.go")
 	if err := os.WriteFile(filename, formatted, 0644); err != nil {
 		return fmt.Errorf("failed to write policies file: %w", err)
+	}
+
+	return nil
+}
+
+// GenerateClientCmd generates a Cobra-based CLI client
+func (g *Generator) GenerateClientCmd() error {
+	var buf bytes.Buffer
+	data := struct {
+		PackageName string
+		ModulePath  string
+		Resources   []ResourceMetadata
+	}{
+		PackageName: g.PackageName,
+		ModulePath:  g.ModulePath,
+		Resources:   g.Resources,
+	}
+
+	if err := g.Templates["clientCmd"].Execute(&buf, data); err != nil {
+		return fmt.Errorf("failed to execute client-cmd template: %w", err)
+	}
+
+	formatted, err := format.Source(buf.Bytes())
+	if err != nil {
+		return fmt.Errorf("failed to format generated client-cmd code: %w", err)
+	}
+
+	filename := filepath.Join(g.OutputDir, "main_generated.go")
+	if err := os.WriteFile(filename, formatted, 0644); err != nil {
+		return fmt.Errorf("failed to write client-cmd file: %w", err)
 	}
 
 	return nil
