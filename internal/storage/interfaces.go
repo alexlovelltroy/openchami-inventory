@@ -228,6 +228,76 @@ type StorageBackend interface {
 	// Example:
 	//   defer backend.Close()
 	Close() error
+
+	// LoadWithVersion retrieves a single resource by UID and returns it in the requested version.
+	//
+	// Parameters:
+	//   - ctx: Context for cancellation and timeouts
+	//   - resourceType: Type name (e.g., "BMC", "Node", "FRU")
+	//   - uid: Unique identifier of the resource
+	//   - version: Requested schema version (e.g., "v1", "v2beta1")
+	//
+	// Returns:
+	//   - json.RawMessage: Serialized resource data in requested version
+	//   - string: Actual version returned (may differ from requested if conversion occurred)
+	//   - error: ErrNotFound if resource doesn't exist, error if version not supported
+	//
+	// Behavior:
+	//   - Returns ErrNotFound if resource doesn't exist
+	//   - Returns error if requested version is not supported
+	//   - May perform version conversion if resource is stored in different version
+	//   - Respects context cancellation
+	//
+	// Example:
+	//   rawBMC, version, err := backend.LoadWithVersion(ctx, "BMC", "bmc-123", "v2beta1")
+	LoadWithVersion(ctx context.Context, resourceType, uid, version string) (json.RawMessage, string, error)
+
+	// LoadAllWithVersion retrieves all resources of the specified type in the requested version.
+	//
+	// Parameters:
+	//   - ctx: Context for cancellation and timeouts
+	//   - resourceType: Type name (e.g., "BMC", "Node", "FRU")
+	//   - version: Requested schema version (e.g., "v1", "v2beta1")
+	//
+	// Returns:
+	//   - []json.RawMessage: Array of serialized resources in requested version
+	//   - error: Error if version not supported
+	//
+	// Behavior:
+	//   - Returns empty slice if no resources exist (not an error)
+	//   - Returns error if requested version is not supported
+	//   - May perform version conversion on each resource
+	//   - Skips corrupted resources and logs warnings
+	//   - Respects context cancellation
+	//
+	// Example:
+	//   rawResources, err := backend.LoadAllWithVersion(ctx, "BMC", "v2beta1")
+	LoadAllWithVersion(ctx context.Context, resourceType, version string) ([]json.RawMessage, error)
+
+	// SaveWithVersion stores a resource with version metadata.
+	//
+	// Parameters:
+	//   - ctx: Context for cancellation and timeouts
+	//   - resourceType: Type name (e.g., "BMC", "Node", "FRU")
+	//   - uid: Unique identifier of the resource
+	//   - data: Serialized resource data
+	//   - version: Schema version of the provided data (e.g., "v1", "v2beta1")
+	//
+	// Returns:
+	//   - error: Any error that occurred during saving
+	//
+	// Behavior:
+	//   - Creates resource if it doesn't exist
+	//   - Updates resource if it already exists
+	//   - May convert to storage version before saving
+	//   - Stores version metadata with resource
+	//   - Operation should be atomic where possible
+	//   - Respects context cancellation
+	//
+	// Example:
+	//   data, _ := json.Marshal(bmcV2)
+	//   err := backend.SaveWithVersion(ctx, "BMC", bmc.GetUID(), data, "v2beta1")
+	SaveWithVersion(ctx context.Context, resourceType, uid string, data json.RawMessage, version string) error
 }
 
 // ResourceStorage provides type-safe storage operations for a specific resource type.
@@ -325,6 +395,69 @@ type ResourceStorage[T any] interface {
 	//   - []string: Array of resource UIDs
 	//   - error: Any error that occurred during listing
 	List(ctx context.Context) ([]string, error)
+
+	// LoadWithVersion retrieves a single resource by UID in the requested version.
+	//
+	// Parameters:
+	//   - ctx: Context for cancellation and timeouts
+	//   - uid: Unique identifier of the resource
+	//   - version: Requested schema version (e.g., "v1", "v2beta1")
+	//
+	// Returns:
+	//   - interface{}: Resource in requested version (type may vary by version)
+	//   - string: Actual version returned
+	//   - error: ErrNotFound if resource doesn't exist, error if version not supported
+	//
+	// Note: Returns interface{} because the concrete type may differ by version.
+	// Callers should type assert to the expected version-specific type.
+	//
+	// Example:
+	//   resource, version, err := bmcStorage.LoadWithVersion(ctx, "bmc-123", "v2beta1")
+	//   if bmcV2, ok := resource.(*bmcv2beta1.BMC); ok {
+	//       // Use v2beta1 resource
+	//   }
+	LoadWithVersion(ctx context.Context, uid string, version string) (interface{}, string, error)
+
+	// LoadAllWithVersion retrieves all resources in the requested version.
+	//
+	// Parameters:
+	//   - ctx: Context for cancellation and timeouts
+	//   - version: Requested schema version (e.g., "v1", "v2beta1")
+	//
+	// Returns:
+	//   - []interface{}: Slice of resources in requested version
+	//   - error: Error if version not supported
+	//
+	// Note: Returns []interface{} because the concrete type may differ by version.
+	// Callers should type assert elements to the expected version-specific type.
+	//
+	// Example:
+	//   resources, err := bmcStorage.LoadAllWithVersion(ctx, "v2beta1")
+	//   for _, r := range resources {
+	//       if bmcV2, ok := r.(*bmcv2beta1.BMC); ok {
+	//           // Use v2beta1 resource
+	//       }
+	//   }
+	LoadAllWithVersion(ctx context.Context, version string) ([]interface{}, error)
+
+	// SaveWithVersion stores a resource with version metadata.
+	//
+	// Parameters:
+	//   - ctx: Context for cancellation and timeouts
+	//   - resource: Resource to save (may be any supported version)
+	//   - version: Schema version of the provided resource
+	//
+	// Returns:
+	//   - error: Any error that occurred during saving
+	//
+	// Behavior:
+	//   - Accepts resources in any supported version
+	//   - May convert to storage version before persisting
+	//   - Stores version metadata
+	//
+	// Example:
+	//   err := bmcStorage.SaveWithVersion(ctx, bmcV2, "v2beta1")
+	SaveWithVersion(ctx context.Context, resource interface{}, version string) error
 }
 
 // Resource interface defines the minimal interface that all resources must implement
@@ -441,6 +574,68 @@ func (s *resourceStorage[T]) List(ctx context.Context) ([]string, error) {
 		return nil, fmt.Errorf("failed to list %s UIDs: %w", s.resourceType, err)
 	}
 	return uids, nil
+}
+
+// LoadWithVersion implements ResourceStorage.LoadWithVersion
+func (s *resourceStorage[T]) LoadWithVersion(ctx context.Context, uid string, version string) (interface{}, string, error) {
+	rawData, actualVersion, err := s.backend.LoadWithVersion(ctx, s.resourceType, uid, version)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to load %s %s (version %s): %w", s.resourceType, uid, version, err)
+	}
+
+	// Unmarshal into interface{} - caller must type assert
+	var resource interface{}
+	if err := json.Unmarshal(rawData, &resource); err != nil {
+		return nil, "", fmt.Errorf("failed to unmarshal %s %s: %w", s.resourceType, uid, ErrInvalidData)
+	}
+
+	return resource, actualVersion, nil
+}
+
+// LoadAllWithVersion implements ResourceStorage.LoadAllWithVersion
+func (s *resourceStorage[T]) LoadAllWithVersion(ctx context.Context, version string) ([]interface{}, error) {
+	rawResources, err := s.backend.LoadAllWithVersion(ctx, s.resourceType, version)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load all %s (version %s): %w", s.resourceType, version, err)
+	}
+
+	var resources []interface{}
+	for _, raw := range rawResources {
+		var resource interface{}
+		if err := json.Unmarshal(raw, &resource); err != nil {
+			// Log warning but continue processing other resources
+			continue
+		}
+		resources = append(resources, resource)
+	}
+
+	return resources, nil
+}
+
+// SaveWithVersion implements ResourceStorage.SaveWithVersion
+func (s *resourceStorage[T]) SaveWithVersion(ctx context.Context, resource interface{}, version string) error {
+	// Extract UID from resource
+	// Try to cast to Resource interface
+	r, ok := resource.(Resource)
+	if !ok {
+		return fmt.Errorf("resource does not implement Resource interface: %w", ErrInvalidData)
+	}
+
+	uid := r.GetUID()
+	if uid == "" {
+		return fmt.Errorf("resource has empty UID: %w", ErrInvalidData)
+	}
+
+	data, err := json.Marshal(resource)
+	if err != nil {
+		return fmt.Errorf("failed to marshal %s: %w", s.resourceType, err)
+	}
+
+	if err := s.backend.SaveWithVersion(ctx, s.resourceType, uid, data, version); err != nil {
+		return fmt.Errorf("failed to save %s %s (version %s): %w", s.resourceType, uid, version, err)
+	}
+
+	return nil
 }
 
 // Convenience functions for getting type-safe storage for each resource type

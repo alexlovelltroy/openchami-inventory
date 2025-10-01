@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/openchami/inventory/pkg/versioning"
 )
 
 // FileBackend implements StorageBackend using file-based storage.
@@ -44,9 +46,10 @@ import (
 //   - Environments where simplicity is preferred over performance
 //   - Situations where human-readable storage is valuable
 type FileBackend struct {
-	baseDir string
-	mu      sync.RWMutex
-	closed  bool
+	baseDir         string
+	mu              sync.RWMutex
+	closed          bool
+	versionRegistry *versioning.VersionRegistry // Version registry for conversion support
 }
 
 // NewFileBackend creates a new file-based storage backend.
@@ -381,4 +384,240 @@ func (f *FileBackend) Close() error {
 
 	f.closed = true
 	return nil
+}
+
+// SetVersionRegistry sets the version registry for version-aware operations.
+// This must be called before using version-aware methods.
+func (f *FileBackend) SetVersionRegistry(registry *versioning.VersionRegistry) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.versionRegistry = registry
+}
+
+// LoadWithVersion implements StorageBackend.LoadWithVersion
+func (f *FileBackend) LoadWithVersion(ctx context.Context, resourceType, uid, version string) (json.RawMessage, string, error) {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+
+	if err := f.checkClosed(); err != nil {
+		return nil, "", err
+	}
+
+	if f.versionRegistry == nil {
+		return nil, "", fmt.Errorf("version registry not set")
+	}
+
+	// Check if context is cancelled
+	select {
+	case <-ctx.Done():
+		return nil, "", ctx.Err()
+	default:
+	}
+
+	// Load the raw resource (stored in default version)
+	rawData, err := f.Load(ctx, resourceType, uid)
+	if err != nil {
+		return nil, "", err
+	}
+
+	// Get default version for this resource type
+	defaultVersion := f.versionRegistry.GetDefaultVersion(resourceType)
+	if defaultVersion == "" {
+		// No versioning configured, return raw data
+		return rawData, "v1", nil
+	}
+
+	// If requested version matches storage version, return as-is
+	if version == "" || version == defaultVersion {
+		return rawData, defaultVersion, nil
+	}
+
+	// Need to convert - get type info for both versions
+	typeInfo, ok := f.versionRegistry.GetVersion(resourceType, version)
+	if !ok {
+		return nil, "", fmt.Errorf("unsupported version %s for %s", version, resourceType)
+	}
+
+	defaultTypeInfo, ok := f.versionRegistry.GetVersion(resourceType, defaultVersion)
+	if !ok {
+		return nil, "", fmt.Errorf("failed to get default version info")
+	}
+
+	// Unmarshal into default version
+	defaultResource := defaultTypeInfo.Constructor()
+	if err := json.Unmarshal(rawData, defaultResource); err != nil {
+		return nil, "", fmt.Errorf("failed to unmarshal resource: %w", err)
+	}
+
+	// Convert to requested version
+	if typeInfo.Converter != nil {
+		converted, err := typeInfo.Converter.Convert(defaultResource, defaultVersion, version)
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to convert from %s to %s: %w", defaultVersion, version, err)
+		}
+
+		// Marshal the converted resource
+		convertedData, err := json.Marshal(converted)
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to marshal converted resource: %w", err)
+		}
+
+		return json.RawMessage(convertedData), version, nil
+	}
+
+	// No converter available
+	return nil, "", fmt.Errorf("no converter available for %s version %s", resourceType, version)
+}
+
+// LoadAllWithVersion implements StorageBackend.LoadAllWithVersion
+func (f *FileBackend) LoadAllWithVersion(ctx context.Context, resourceType, version string) ([]json.RawMessage, error) {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+
+	if err := f.checkClosed(); err != nil {
+		return nil, err
+	}
+
+	if f.versionRegistry == nil {
+		return nil, fmt.Errorf("version registry not set")
+	}
+
+	// Check if context is cancelled
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
+	// Load all resources in default version
+	rawResources, err := f.LoadAll(ctx, resourceType)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get default version
+	defaultVersion := f.versionRegistry.GetDefaultVersion(resourceType)
+	if defaultVersion == "" {
+		// No versioning configured, return raw data
+		return rawResources, nil
+	}
+
+	// If requested version matches storage version, return as-is
+	if version == "" || version == defaultVersion {
+		return rawResources, nil
+	}
+
+	// Need to convert each resource
+	typeInfo, ok := f.versionRegistry.GetVersion(resourceType, version)
+	if !ok {
+		return nil, fmt.Errorf("unsupported version %s for %s", version, resourceType)
+	}
+
+	defaultTypeInfo, ok := f.versionRegistry.GetVersion(resourceType, defaultVersion)
+	if !ok {
+		return nil, fmt.Errorf("failed to get default version info")
+	}
+
+	if typeInfo.Converter == nil {
+		return nil, fmt.Errorf("no converter available for %s version %s", resourceType, version)
+	}
+
+	var convertedResources []json.RawMessage
+	for _, rawData := range rawResources {
+		// Check for cancellation periodically
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+
+		// Unmarshal into default version
+		defaultResource := defaultTypeInfo.Constructor()
+		if err := json.Unmarshal(rawData, defaultResource); err != nil {
+			// Skip corrupted resources
+			continue
+		}
+
+		// Convert to requested version
+		converted, err := typeInfo.Converter.Convert(defaultResource, defaultVersion, version)
+		if err != nil {
+			// Skip resources that fail conversion
+			continue
+		}
+
+		// Marshal the converted resource
+		convertedData, err := json.Marshal(converted)
+		if err != nil {
+			// Skip resources that fail marshaling
+			continue
+		}
+
+		convertedResources = append(convertedResources, json.RawMessage(convertedData))
+	}
+
+	return convertedResources, nil
+}
+
+// SaveWithVersion implements StorageBackend.SaveWithVersion
+func (f *FileBackend) SaveWithVersion(ctx context.Context, resourceType, uid string, data json.RawMessage, version string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if err := f.checkClosed(); err != nil {
+		return err
+	}
+
+	if f.versionRegistry == nil {
+		return fmt.Errorf("version registry not set")
+	}
+
+	// Check if context is cancelled
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
+	// Get default version (storage version)
+	defaultVersion := f.versionRegistry.GetDefaultVersion(resourceType)
+	if defaultVersion == "" {
+		// No versioning configured, save as-is
+		return f.Save(ctx, resourceType, uid, data)
+	}
+
+	// If data is already in default version, save as-is
+	if version == "" || version == defaultVersion {
+		return f.Save(ctx, resourceType, uid, data)
+	}
+
+	// Need to convert to storage version
+	typeInfo, ok := f.versionRegistry.GetVersion(resourceType, version)
+	if !ok {
+		return fmt.Errorf("unsupported version %s for %s", version, resourceType)
+	}
+
+	if typeInfo.Converter == nil {
+		return fmt.Errorf("no converter available for %s version %s", resourceType, version)
+	}
+
+	// Unmarshal into provided version
+	resource := typeInfo.Constructor()
+	if err := json.Unmarshal(data, resource); err != nil {
+		return fmt.Errorf("failed to unmarshal resource: %w", err)
+	}
+
+	// Convert to storage version
+	converted, err := typeInfo.Converter.Convert(resource, version, defaultVersion)
+	if err != nil {
+		return fmt.Errorf("failed to convert from %s to %s: %w", version, defaultVersion, err)
+	}
+
+	// Marshal to storage format
+	storageData, err := json.Marshal(converted)
+	if err != nil {
+		return fmt.Errorf("failed to marshal converted resource: %w", err)
+	}
+
+	// Save in storage version
+	return f.Save(ctx, resourceType, uid, json.RawMessage(storageData))
 }

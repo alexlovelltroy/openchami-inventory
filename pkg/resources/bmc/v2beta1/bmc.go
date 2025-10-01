@@ -100,21 +100,21 @@ type BMCStatus struct {
 
 // Request types for code generation (v2beta1)
 type CreateBMCRequest struct {
-	Name           string                  `json:"name" validate:"required"`
-	Address        string                  `json:"address" validate:"required"`
-	Type           string                  `json:"type" validate:"required"`
-	Authentication AuthenticationConfig    `json:"authentication" validate:"required"`
-	Labels         map[string]string       `json:"labels,omitempty"`
-	Annotations    map[string]string       `json:"annotations,omitempty"`
+	Name           string               `json:"name" validate:"required"`
+	Address        string               `json:"address" validate:"required"`
+	Type           string               `json:"type" validate:"required"`
+	Authentication AuthenticationConfig `json:"authentication" validate:"required"`
+	Labels         map[string]string    `json:"labels,omitempty"`
+	Annotations    map[string]string    `json:"annotations,omitempty"`
 }
 
 type UpdateBMCRequest struct {
-	Name           string                  `json:"name,omitempty"`
-	Address        string                  `json:"address,omitempty"`
-	Type           string                  `json:"type,omitempty"`
-	Authentication *AuthenticationConfig   `json:"authentication,omitempty"`
-	Labels         map[string]string       `json:"labels,omitempty"`
-	Annotations    map[string]string       `json:"annotations,omitempty"`
+	Name           string                `json:"name,omitempty"`
+	Address        string                `json:"address,omitempty"`
+	Type           string                `json:"type,omitempty"`
+	Authentication *AuthenticationConfig `json:"authentication,omitempty"`
+	Labels         map[string]string     `json:"labels,omitempty"`
+	Annotations    map[string]string     `json:"annotations,omitempty"`
 }
 
 // ToBMCSpec converts CreateBMCRequest to BMCSpec

@@ -63,6 +63,17 @@ func VersionNegotiationMiddleware(registry *VersionRegistry) func(http.Handler) 
 			// Negotiate the final version to serve
 			ctx.ServeVersion = negotiateVersion(ctx, registry)
 
+			// If version negotiation failed (client requested unsupported version), return 406
+			if ctx.ServeVersion == "" && ctx.RequestedVersion != "" {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusNotAcceptable)
+				errorMsg := fmt.Sprintf(`{"error":"Unsupported version","requested":"%s","supported":%v}`,
+					ctx.RequestedVersion,
+					registry.ListVersions(ctx.ResourceKind))
+				w.Write([]byte(errorMsg))
+				return
+			}
+
 			// Set response Content-Type header with version
 			if ctx.ServeVersion != "" {
 				contentType := fmt.Sprintf("application/json;version=%s", ctx.ServeVersion)
@@ -186,9 +197,9 @@ func negotiateVersion(ctx *VersionContext, registry *VersionRegistry) string {
 			}
 		}
 
-		// Requested version not available, check if we can convert
-		// For now, fall back to default version
-		// TODO: Implement conversion logic in Phase 3
+		// Requested version not available - return empty string to signal error
+		// The handler should check for this and return 406 Not Acceptable
+		return ""
 	}
 
 	// Use default version for this resource

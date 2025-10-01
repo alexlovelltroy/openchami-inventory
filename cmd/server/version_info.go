@@ -6,9 +6,9 @@ import (
 
 // VersionInfoResponse describes the API version capabilities
 type VersionInfoResponse struct {
-	APIVersion                string                       `json:"apiVersion"`
-	SupportedResourceVersions map[string][]string          `json:"supportedResourceVersions"`
-	DefaultVersions           map[string]string            `json:"defaultVersions"`
+	APIVersion                string                              `json:"apiVersion"`
+	SupportedResourceVersions map[string][]string                 `json:"supportedResourceVersions"`
+	DefaultVersions           map[string]string                   `json:"defaultVersions"`
 	VersionDetails            map[string]map[string]VersionDetail `json:"versionDetails"`
 }
 

@@ -155,6 +155,82 @@ func List{{.StorageName}}UIDs() ([]string, error) {
 	return storage.List(context.Background())
 }
 
+// Load{{.StorageName}}WithVersion retrieves a single {{.Name}} resource in the requested schema version.
+//
+// Parameters:
+//   - uid: Unique identifier of the {{.Name}} resource
+//   - version: Requested schema version (e.g., "v1", "v2beta1")
+//
+// Returns:
+//   - interface{}: The {{.Name}} resource in requested version (caller must type assert)
+//   - string: Actual version returned
+//   - error: ErrNotFound if resource doesn't exist, error if version not supported
+//
+// This is a convenience function that uses storage.DefaultBackend.
+// For more control, use storage.Get{{.Name}}Storage(backend).LoadWithVersion(ctx, uid, version).
+//
+// Example:
+//   resource, version, err := storage.Load{{.StorageName}}WithVersion("{{toLower .Name}}-123", "v2beta1")
+//   if err != nil {
+//       return err
+//   }
+//   // Type assert to expected version type
+//   if {{camelCase .Name}}V2, ok := resource.(*{{toLower .PackageAlias}}v2beta1.{{.Name}}); ok {
+//       // Use v2beta1 resource
+//   }
+func Load{{.StorageName}}WithVersion(uid string, version string) (interface{}, string, error) {
+	ensureDefaultBackend()
+	storage := Get{{.Name}}Storage(DefaultBackend)
+	return storage.LoadWithVersion(context.Background(), uid, version)
+}
+
+// LoadAll{{.StorageName}}sWithVersion retrieves all {{.Name}} resources in the requested schema version.
+//
+// Parameters:
+//   - version: Requested schema version (e.g., "v1", "v2beta1")
+//
+// Returns:
+//   - []interface{}: Slice of {{.Name}} resources in requested version
+//   - error: Error if version not supported
+//
+// This is a convenience function that uses storage.DefaultBackend.
+// For more control, use storage.Get{{.Name}}Storage(backend).LoadAllWithVersion(ctx, version).
+//
+// Example:
+//   resources, err := storage.LoadAll{{.StorageName}}sWithVersion("v2beta1")
+//   if err != nil {
+//       return err
+//   }
+//   for _, r := range resources {
+//       if {{camelCase .Name}}V2, ok := r.(*{{toLower .PackageAlias}}v2beta1.{{.Name}}); ok {
+//           // Use v2beta1 resource
+//       }
+//   }
+func LoadAll{{.StorageName}}sWithVersion(version string) ([]interface{}, error) {
+	ensureDefaultBackend()
+	storage := Get{{.Name}}Storage(DefaultBackend)
+	return storage.LoadAllWithVersion(context.Background(), version)
+}
+
+// Save{{.StorageName}}WithVersion stores a {{.Name}} resource with version information.
+//
+// Parameters:
+//   - {{camelCase .Name}}: The {{.Name}} resource to save (can be any supported version)
+//   - version: Schema version of the provided resource
+//
+// Returns:
+//   - error: Any error that occurred during saving
+//
+// The storage backend will convert the resource to the storage version if needed.
+//
+// This is a convenience function that uses storage.DefaultBackend.
+// For more control, use storage.Get{{.Name}}Storage(backend).SaveWithVersion(ctx, resource, version).
+func Save{{.StorageName}}WithVersion({{camelCase .Name}} interface{}, version string) error {
+	ensureDefaultBackend()
+	storage := Get{{.Name}}Storage(DefaultBackend)
+	return storage.SaveWithVersion(context.Background(), {{camelCase .Name}}, version)
+}
+
 {{end}}
 
 // SetDefaultBackend sets the storage backend used by package-level convenience functions.
