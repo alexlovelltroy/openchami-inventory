@@ -39,12 +39,6 @@ import (
 // {{.Name}}Response represents the response for {{.Name}} operations
 type {{.Name}}Response = {{.PackageAlias}}.{{.Name}}
 
-// {{.Name}}sResponse represents a list of {{.Name}}s
-type {{.Name}}sResponse struct {
-	Items []{{.PackageAlias}}.{{.Name}} `json:"items"`
-	Total int                   `json:"total"`
-}
-
 // Create{{.Name}}Request represents a request to create a {{.Name}}
 type Create{{.Name}}Request struct {
 	{{.SpecType}} `json:",inline"`

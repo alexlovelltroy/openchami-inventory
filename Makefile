@@ -96,6 +96,7 @@ build: generate post-generate
 	go build -o bin/codegen ./cmd/codegen
 	go build -o bin/version-demo ./cmd/version-demo
 	go build -o bin/inventory-cli ./cmd/inventory-cli
+	go build -o bin/populate-bmcs ./cmd/populate-bmcs
 
 # Test everything
 test: generate post-generate

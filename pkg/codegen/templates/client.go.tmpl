@@ -134,11 +134,11 @@ func (c *Client) doRequest(ctx context.Context, method, endpoint string, body in
 {{range .Resources}}
 // Get{{.Name}}s retrieves all {{.PluralName}}
 func (c *Client) Get{{.Name}}s(ctx context.Context) ([]{{.PackageAlias}}.{{.Name}}, error) {
-	var response {{.Name}}sResponse
+	var response []{{.PackageAlias}}.{{.Name}}
 	if err := c.doRequest(ctx, "GET", "{{.URLPath}}", nil, &response); err != nil {
 		return nil, err
 	}
-	return response.Items, nil
+	return response, nil
 }
 
 // Get{{.Name}} retrieves a specific {{.Name}} by UID

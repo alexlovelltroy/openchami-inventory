@@ -41,25 +41,24 @@ import (
 // Get{{.Name}}s returns all {{.Name}} resources
 func Get{{.Name}}s(c fuego.ContextNoBody) ([]{{.TypeName}}, error) {
 {{if .RequiresAuth}}
-	// Check authorization
-	if auth, ok := GetAuthFromContext(c.Context()); ok {
-		if policy, exists := policyRegistry.GetPolicy("{{.Name}}"); exists {
-			if decision := policy.CanList(c.Context(), auth, c.Request()); !decision.Allowed {
-				return nil, fuego.HTTPError{
-					Status: http.StatusForbidden,
-					Err:    fmt.Errorf("access denied: %s", decision.Reason),
-				}
+	// Check authorization - extract auth context (may be nil for permissive policies)
+	auth, _ := GetAuthFromContext(c.Context())
+	
+	if policy, exists := policyRegistry.GetPolicy("{{.Name}}"); exists {
+		if decision := policy.CanList(c.Context(), auth, c.Request()); !decision.Allowed {
+			status := http.StatusForbidden
+			if auth == nil {
+				status = http.StatusUnauthorized
 			}
-		} else {
 			return nil, fuego.HTTPError{
-				Status: http.StatusInternalServerError,
-				Err:    fmt.Errorf("no policy configured for {{.Name}}"),
+				Status: status,
+				Err:    fmt.Errorf("access denied: %s", decision.Reason),
 			}
 		}
 	} else {
 		return nil, fuego.HTTPError{
-			Status: http.StatusUnauthorized,
-			Err:    fmt.Errorf("authentication required"),
+			Status: http.StatusInternalServerError,
+			Err:    fmt.Errorf("no policy configured for {{.Name}}"),
 		}
 	}
 {{end}}
@@ -89,25 +88,24 @@ func Get{{.Name}}(c fuego.ContextNoBody) ({{.TypeName}}, error) {
 	// To enable: replace storage.Load{{.StorageName}}() with version-aware function
 
 {{if .RequiresAuth}}
-	// Check authorization
-	if auth, ok := GetAuthFromContext(c.Context()); ok {
-		if policy, exists := policyRegistry.GetPolicy("{{.Name}}"); exists {
-			if decision := policy.CanGet(c.Context(), auth, c.Request(), uid); !decision.Allowed {
-				return nil, fuego.HTTPError{
-					Status: http.StatusForbidden,
-					Err:    fmt.Errorf("access denied: %s", decision.Reason),
-				}
+	// Check authorization - extract auth context (may be nil for permissive policies)
+	auth, _ := GetAuthFromContext(c.Context())
+	
+	if policy, exists := policyRegistry.GetPolicy("{{.Name}}"); exists {
+		if decision := policy.CanGet(c.Context(), auth, c.Request(), uid); !decision.Allowed {
+			status := http.StatusForbidden
+			if auth == nil {
+				status = http.StatusUnauthorized
 			}
-		} else {
 			return nil, fuego.HTTPError{
-				Status: http.StatusInternalServerError,
-				Err:    fmt.Errorf("no policy configured for {{.Name}}"),
+				Status: status,
+				Err:    fmt.Errorf("access denied: %s", decision.Reason),
 			}
 		}
 	} else {
 		return nil, fuego.HTTPError{
-			Status: http.StatusUnauthorized,
-			Err:    fmt.Errorf("authentication required"),
+			Status: http.StatusInternalServerError,
+			Err:    fmt.Errorf("no policy configured for {{.Name}}"),
 		}
 	}
 {{end}}
