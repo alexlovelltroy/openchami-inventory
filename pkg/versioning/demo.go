@@ -7,6 +7,8 @@ package versioning
 import (
 	"fmt"
 	"reflect"
+
+	bmcv2beta1 "github.com/openchami/inventory/pkg/resources/bmc/v2beta1"
 )
 
 // DemoMultiVersionSupport demonstrates the multi-version capability
@@ -94,6 +96,32 @@ func DemoMultiVersionSupport() error {
 	}
 	fmt.Println("✓ Registered BMC v1 (stable)")
 
+	// Register BMC v2beta1 (with enhanced authentication)
+	bmcV2Beta1 := SchemaVersion{
+		Version:    "v2beta1",
+		IsDefault:  false,
+		Stability:  "beta",
+		Deprecated: false,
+		SpecType:   "bmcv2beta1.BMCSpec",
+		StatusType: "bmcv2beta1.BMCStatus",
+		TypeName:   "*bmcv2beta1.BMC",
+		Package:    "github.com/openchami/inventory/pkg/resources/bmc/v2beta1",
+		Transforms: []string{"ConvertV1ToV2Beta1", "ConvertV2Beta1ToV1"},
+	}
+
+	bmcV2Beta1TypeInfo := ResourceTypeInfo{
+		Type:        reflect.TypeOf(&bmcv2beta1.BMC{}),
+		Constructor: func() interface{} { return &bmcv2beta1.BMC{} },
+		Converter:   bmcv2beta1.NewBMCConverter(),
+		Metadata:    bmcV2Beta1,
+	}
+
+	err = registry.RegisterVersion("BMC", "v2beta1", bmcV2Beta1TypeInfo)
+	if err != nil {
+		return fmt.Errorf("failed to register BMC v2beta1: %w", err)
+	}
+	fmt.Println("✓ Registered BMC v2beta1 (beta - enhanced authentication)")
+
 	// Demonstrate version queries
 	fmt.Println("\n=== Version Registry Queries ===")
 
@@ -147,6 +175,12 @@ func DemoMultiVersionSupport() error {
 			resourceKind:     "BMC",
 			requestedVersion: "",
 			expectedVersion:  "v1",
+		},
+		{
+			name:             "Client requests BMC v2beta1 (enhanced auth)",
+			resourceKind:     "BMC",
+			requestedVersion: "v2beta1",
+			expectedVersion:  "v2beta1",
 		},
 	}
 
