@@ -2,6 +2,53 @@
 
 Utility scripts for the OpenCHAMI Inventory system.
 
+## demo-version-negotiation.sh
+
+Demonstrates the multi-version schema support in the OpenCHAMI Inventory API.
+
+### What It Does
+
+This interactive demo script:
+1. Creates a BMC using v1 schema (basic authentication)
+2. Creates a BMC using v2beta1 schema (OIDC authentication)
+3. Retrieves both BMCs in v1 format (backward compatibility)
+4. Retrieves both BMCs in v2beta1 format (forward compatibility)
+5. Shows automatic schema conversion between versions
+6. Displays API version information
+
+### Usage
+
+```bash
+# Start the server with auth disabled for testing
+./bin/server --port 9999 --disable-auth
+
+# In another terminal, run the demo
+./scripts/demo-version-negotiation.sh
+```
+
+### Environment Variables
+
+- `INVENTORY_SERVER` - Server URL (default: `http://localhost:9999`)
+- `INVENTORY_CLI` - Path to CLI binary (default: `./bin/inventory-cli`)
+
+### Example Output
+
+The script provides step-by-step output showing:
+- Creation of v1 BMC with basic auth (username/password)
+- Creation of v2beta1 BMC with OIDC auth (client credentials)
+- Listing all BMCs with their schema versions
+- Retrieving v1 BMC as v2beta1 (shows auth conversion)
+- Retrieving v2beta1 BMC as v1 (backward compatibility)
+- API version capabilities and supported versions
+
+### Key Concepts Demonstrated
+
+- **Version Negotiation**: Using `Accept: application/json;version=v2beta1` headers
+- **Forward Compatibility**: v1 resources can be read as v2beta1
+- **Backward Compatibility**: v2beta1 resources can be read as v1
+- **Schema Evolution**: New authentication methods in v2beta1
+- **Coexistence**: Multiple schema versions in the same database
+
 ## populate-bmcs.sh
 
 Bash script to populate the inventory with 25 sample BMCs using the CLI.

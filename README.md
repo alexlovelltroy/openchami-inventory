@@ -41,6 +41,7 @@ pkg/client/        # Generated HTTP client library
 - **[DEVELOPMENT.md](docs/DEVELOPMENT.md)** - Comprehensive development guide
 - **`make discover`** - Interactive codebase explorer
 - **`./scripts/discover.sh`** - Detailed project status and structure
+- **[Template Documentation](pkg/codegen/templates/README.md)** - Getting started guide for creating and editing the metaprogramming templates
 
 ## 🔧 Development Workflow
 
@@ -69,4 +70,4 @@ New to the codebase? Start with:
 
 ## 📝 License
 
-[License information here]
+MIT

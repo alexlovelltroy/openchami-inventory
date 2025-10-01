@@ -41,6 +41,7 @@ Each resource supports the following subcommands:
 - `--server` - Inventory server URL (default: `http://localhost:8080`)
 - `--timeout` - Request timeout (default: `30s`)
 - `--output, -o` - Output format: `table`, `json`, `yaml` (default: `table`)
+- `--version, -v` - API version to request: `v1`, `v2beta1`, etc. (default: server default)
 - `--config` - Config file (default: `$HOME/.inventory-cli.yaml`)
 
 ### Environment Variables
@@ -48,6 +49,7 @@ Each resource supports the following subcommands:
 All flags can be set via environment variables with the `INVENTORY_` prefix:
 
 - `INVENTORY_SERVER` - Server URL
+- `INVENTORY_VERSION` - API version to request
 - `INVENTORY_TIMEOUT` - Request timeout
 - `INVENTORY_OUTPUT` - Output format
 
@@ -115,6 +117,25 @@ echo '{
 ```bash
 ./bin/inventory-cli --server https://inventory.example.com node list
 ```
+
+#### Request specific API version
+
+```bash
+# Get BMC as v1 (basic auth format)
+./bin/inventory-cli --version v1 bmc get <uid>
+
+# Get BMC as v2beta1 (enhanced auth format)
+./bin/inventory-cli --version v2beta1 bmc get <uid> --output json
+
+# List all BMCs with v2beta1
+./bin/inventory-cli -v v2beta1 bmc list
+
+# Use environment variable
+export INVENTORY_VERSION=v2beta1
+./bin/inventory-cli bmc list
+```
+
+See [CLI Version Examples](../../docs/CLI-VERSION-EXAMPLES.md) for more details.
 
 Or using environment variable:
 
