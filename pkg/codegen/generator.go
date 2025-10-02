@@ -231,7 +231,7 @@ func (g *Generator) GenerateAll() error {
 	// Generate based on package type
 	switch g.PackageName {
 	case "main":
-		// Server code - handlers, routes, models, and storage
+		// Server code - handlers, routes, models, storage, and openapi
 		if err := g.GenerateModels(); err != nil {
 			return err
 		}
@@ -242,6 +242,9 @@ func (g *Generator) GenerateAll() error {
 			return err
 		}
 		if err := g.GenerateStorage(); err != nil {
+			return err
+		}
+		if err := g.GenerateOpenAPI(); err != nil {
 			return err
 		}
 	case "client":
@@ -338,6 +341,7 @@ func (g *Generator) LoadTemplates() error {
 		"client":       "client.go.tmpl",
 		"policies":     "policies.go.tmpl",
 		"clientCmd":    "client-cmd.go.tmpl",
+		"openapi":      "openapi.go.tmpl",
 	}
 
 	g.Templates = make(map[string]*template.Template)
@@ -536,6 +540,36 @@ func (g *Generator) GenerateClientCmd() error {
 	filename := filepath.Join(g.OutputDir, "main_generated.go")
 	if err := os.WriteFile(filename, formatted, 0644); err != nil {
 		return fmt.Errorf("failed to write client-cmd file: %w", err)
+	}
+
+	return nil
+}
+
+// GenerateOpenAPI generates OpenAPI specification code
+func (g *Generator) GenerateOpenAPI() error {
+	var buf bytes.Buffer
+	data := struct {
+		PackageName string
+		ModulePath  string
+		Resources   []ResourceMetadata
+	}{
+		PackageName: g.PackageName,
+		ModulePath:  g.ModulePath,
+		Resources:   g.Resources,
+	}
+
+	if err := g.Templates["openapi"].Execute(&buf, data); err != nil {
+		return fmt.Errorf("failed to execute openapi template: %w", err)
+	}
+
+	formatted, err := format.Source(buf.Bytes())
+	if err != nil {
+		return fmt.Errorf("failed to format generated openapi code: %w", err)
+	}
+
+	filename := filepath.Join(g.OutputDir, "openapi_generated.go")
+	if err := os.WriteFile(filename, formatted, 0644); err != nil {
+		return fmt.Errorf("failed to write openapi file: %w", err)
 	}
 
 	return nil

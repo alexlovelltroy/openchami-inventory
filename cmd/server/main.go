@@ -3,10 +3,12 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"reflect"
 
-	"github.com/go-fuego/fuego"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/openchami/inventory/pkg/policies"
 	"github.com/openchami/inventory/pkg/resources/bmc"
 	bmcv2beta1 "github.com/openchami/inventory/pkg/resources/bmc/v2beta1"
@@ -204,43 +206,81 @@ func runServer(cmd *cobra.Command, args []string) {
 	// Initialize version registry
 	initializeVersionRegistry()
 
-	// Create fuego server with custom options
-	serverOptions := []func(*fuego.Server){
-		fuego.WithAddr(fmt.Sprintf("%s:%d", host, port)),
-	}
+	// Create Chi router
+	r := chi.NewRouter()
 
-	// Add CORS if enabled
-	if corsEnabled {
-		log.Printf("Note: CORS configuration requested but needs custom middleware implementation")
-		// TODO: Implement CORS middleware based on fuego's actual CORS support
-		// For now, CORS can be handled by a reverse proxy (nginx, traefik, etc.)
-	}
-
-	s := fuego.NewServer(serverOptions...)
+	// Apply standard middleware
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
 
 	// Add version negotiation middleware
-	fuego.Use(s, versioning.VersionNegotiationMiddleware(versionRegistry))
+	r.Use(versioning.VersionNegotiationMiddleware(versionRegistry))
+
+	// Add CORS middleware if enabled
+	if corsEnabled {
+		r.Use(corsMiddleware(corsOrigins))
+		log.Printf("  CORS middleware enabled for origins: %v", corsOrigins)
+	}
 
 	// Register generated routes
-	RegisterGeneratedRoutes(s)
+	RegisterGeneratedRoutes(r)
 
 	// Add health check endpoint
-	fuego.Get(s, "/health", func(c fuego.ContextNoBody) (map[string]string, error) {
-		return map[string]string{
-			"status":  "ok",
-			"version": "1.0.0",
-		}, nil
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, `{"status":"ok","version":"1.0.0"}`)
 	})
 
 	// Add version discovery endpoint
-	fuego.Get(s, "/version-info", GetVersionInfo)
+	r.Get("/version-info", GetVersionInfo)
 
-	log.Printf("Starting OpenCHAMI Inventory Server on %s:%d", host, port)
-	log.Printf("Health check available at: http://%s:%d/health", host, port)
-	log.Printf("Version info available at: http://%s:%d/version-info", host, port)
+	addr := fmt.Sprintf("%s:%d", host, port)
+	log.Printf("Starting OpenCHAMI Inventory Server on %s", addr)
+	log.Printf("Health check available at: http://%s/health", addr)
+	log.Printf("Version info available at: http://%s/version-info", addr)
+	log.Printf("OpenAPI spec available at: http://%s/openapi.json", addr)
+	log.Printf("Swagger UI available at: http://%s/docs", addr)
 
-	if err := s.Run(); err != nil {
+	if err := http.ListenAndServe(addr, r); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
+	}
+}
+
+// corsMiddleware returns a Chi middleware for CORS support
+func corsMiddleware(origins []string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Set CORS headers
+			origin := r.Header.Get("Origin")
+			if origin != "" {
+				// Check if origin is allowed
+				allowed := false
+				for _, o := range origins {
+					if o == "*" || o == origin {
+						allowed = true
+						break
+					}
+				}
+				if allowed {
+					w.Header().Set("Access-Control-Allow-Origin", origin)
+					w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+					w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Version")
+					w.Header().Set("Access-Control-Expose-Headers", "X-API-Version")
+					w.Header().Set("Access-Control-Max-Age", "3600")
+				}
+			}
+
+			// Handle preflight requests
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
 	}
 }
 

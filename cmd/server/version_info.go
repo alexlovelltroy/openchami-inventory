@@ -1,7 +1,8 @@
 package main
 
 import (
-	"github.com/go-fuego/fuego"
+	"encoding/json"
+	"net/http"
 )
 
 // VersionInfoResponse describes the API version capabilities
@@ -22,12 +23,10 @@ type VersionDetail struct {
 }
 
 // GetVersionInfo returns information about supported API versions
-func GetVersionInfo(c fuego.ContextNoBody) (*VersionInfoResponse, error) {
+func GetVersionInfo(w http.ResponseWriter, r *http.Request) {
 	if versionRegistry == nil {
-		return nil, fuego.HTTPError{
-			Status: 500,
-			Err:    &ErrMsg{Message: "version registry not initialized"},
-		}
+		respondError(w, http.StatusInternalServerError, &ErrMsg{Message: "version registry not initialized"})
+		return
 	}
 
 	kinds := versionRegistry.ListKinds()
@@ -58,12 +57,16 @@ func GetVersionInfo(c fuego.ContextNoBody) (*VersionInfoResponse, error) {
 		versionDetails[kind] = kindDetails
 	}
 
-	return &VersionInfoResponse{
+	response := &VersionInfoResponse{
 		APIVersion:                "inventory/v1",
 		SupportedResourceVersions: supportedVersions,
 		DefaultVersions:           defaultVersions,
 		VersionDetails:            versionDetails,
-	}, nil
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
 }
 
 // ErrMsg is a simple error message wrapper
