@@ -2,7 +2,7 @@
 
 ## Architecture Overview
 
-This project uses **code generation** to maintain consistency across resource types while reducing boilerplate. Understanding this architecture is key to effective development.
+This project uses **code generation** and **event-driven reconciliation** to maintain consistency across resource types while enabling declarative infrastructure management. Understanding this architecture is key to effective development.
 
 ### Core Concepts
 
@@ -16,7 +16,29 @@ pkg/resources/
 └── main.go        # Common resource interfaces and utilities
 ```
 
-#### 2. Generated vs. Manual Code
+#### 2. Event-Driven System
+```
+pkg/events/        # CloudEvents-compliant event system
+├── events.go      # Event interface and types
+└── memory_bus.go  # In-memory event bus with pub/sub
+
+pkg/reconcile/     # Reconciliation framework
+├── reconciler.go  # Reconciler interface and base implementation
+├── controller.go  # Reconciliation controller
+└── workqueue.go   # Work queue with rate limiting
+
+pkg/workflows/     # Workflow engine for complex operations
+├── workflows.go   # Workflow interface
+├── goworkflows.go # Embedded workflow engine
+└── temporal.go    # Temporal integration (optional)
+
+pkg/reconcilers/   # Generated reconcilers (via code generation)
+├── *_reconciler_generated.go  # Per-resource reconcilers
+├── registration_generated.go  # Automatic registration
+└── event_handlers_generated.go # Cross-resource event handlers
+```
+
+#### 3. Generated vs. Manual Code
 
 **Generated Code** (⚠️ Do NOT edit directly):
 - `cmd/server/*_handlers_generated.go` - REST API handlers
@@ -25,6 +47,9 @@ pkg/resources/
 - `cmd/server/policies_generated.go` - Auth integration
 - `internal/storage/storage_generated.go` - Storage operations
 - `pkg/client/` - HTTP client library
+- `pkg/reconcilers/*_reconciler_generated.go` - Reconciler boilerplate
+- `pkg/reconcilers/registration_generated.go` - Reconciler registration
+- `pkg/reconcilers/event_handlers_generated.go` - Event handler registry
 
 **Manual Code** (✅ Safe to edit):
 - `pkg/resources/*/` - Resource type definitions
@@ -32,6 +57,13 @@ pkg/resources/
 - `cmd/server/main.go` - Server setup and configuration
 - `cmd/crawler/` - Hardware discovery logic
 - `pkg/codegen/templates/` - Code generation template files
+- `pkg/events/` - Event system implementation
+- `pkg/reconcile/` - Reconciliation framework
+- `pkg/workflows/` - Workflow engine
+
+**Customizable Generated Code** (✅ Edit stub methods only):
+- `pkg/reconcilers/*_reconciler_generated.go` - Edit `reconcile{Name}()` method
+- `pkg/reconcilers/event_handlers_generated.go` - Add event handler methods
 
 ## How to Add a New Resource Type
 
@@ -76,6 +108,112 @@ This automatically generates:
 - Client library methods
 - Storage operations
 - Request/response types
+
+### Step 4: Generate Reconciler (Optional)
+
+If your resource needs reconciliation logic:
+
+```bash
+# Generate reconciler boilerplate
+go run cmd/codegen/main.go -type reconcile -output pkg/reconcilers -package reconcilers
+```
+
+This generates:
+- `newtype_reconciler_generated.go` - Reconciler with stub method
+- Updates `registration_generated.go` - Automatic registration
+- Updates `event_handlers_generated.go` - Event handler registry
+
+### Step 5: Implement Reconciliation Logic (Optional)
+
+Edit the stub method in `pkg/reconcilers/newtype_reconciler_generated.go`:
+
+```go
+func (r *NewTypeReconciler) reconcileNewType(ctx context.Context, nt *newtype.NewType) error {
+    // TODO: Implement reconciliation logic
+    // 1. Observe actual state
+    // 2. Compare with desired state (nt.Spec)
+    // 3. Take actions to align actual with desired
+    // 4. Update status fields (nt.Status)
+    
+    return nil
+}
+```
+
+See [Reconciliation Guide](RECONCILIATION.md) for details.
+
+## Event-Driven Reconciliation
+
+The system uses an event-driven architecture where resources are automatically reconciled when they change:
+
+### How It Works
+
+1. **User creates/updates resource** via REST API
+2. **Storage emits event** (e.g., `bmcs.created`)
+3. **Event bus notifies subscribers**
+4. **Reconciliation controller** receives event
+5. **Reconciler processes resource** to align actual state with desired state
+6. **Status updated** and reconciliation event emitted
+
+### Event Flow Example
+
+```
+POST /bmcs (Create BMC)
+    ↓
+Storage.SaveBMC()
+    ↓
+Emit: io.openchami.inventory.bmcs.created
+    ↓
+Controller receives event
+    ↓
+BMCReconciler.Reconcile()
+    ↓
+Connect to BMC, update status
+    ↓
+Emit: io.openchami.inventory.bmcs.reconciled
+```
+
+### Reconciler Pattern
+
+Reconcilers implement the pattern:
+
+```go
+func (r *ResourceReconciler) Reconcile(ctx context.Context, resource *Resource) error {
+    // 1. Get desired state from Spec
+    desired := resource.Spec
+    
+    // 2. Observe actual state
+    actual := r.observeActualState(resource)
+    
+    // 3. Compare and take actions
+    if !reflect.DeepEqual(actual, desired) {
+        if err := r.alignState(actual, desired); err != nil {
+            return err // Will be retried
+        }
+    }
+    
+    // 4. Update status
+    resource.Status = actual
+    
+    return nil
+}
+```
+
+### Cross-Resource Reactions
+
+Event handlers enable resources to react to other resources:
+
+```go
+// When BMC connects, discover FRUs
+eventBus.Subscribe("io.openchami.inventory.bmcs.connected", func(event Event) {
+    bmc := event.Data()
+    frus := discoverFRUs(bmc)
+    for _, fru := range frus {
+        storage.SaveFRU(fru) // Triggers FRU reconciliation
+    }
+})
+```
+
+See [Reconciliation Guide](RECONCILIATION.md) for complete details.
 
 ## Understanding Generated Code
 

@@ -78,6 +78,9 @@ Generated Code
 | `models.go.tmpl` | Server types | `cmd/server/models_generated.go` |
 | `routes.go.tmpl` | URL routing | `cmd/server/routes_generated.go` |
 | `policies.go.tmpl` | Auth integration | `cmd/server/policies_generated.go` |
+| `reconciler.go.tmpl` | Reconciler boilerplate | `pkg/reconcilers/*_reconciler_generated.go` |
+| `reconciler-registration.go.tmpl` | Reconciler registration | `pkg/reconcilers/registration_generated.go` |
+| `event-handlers.go.tmpl` | Event handler registry | `pkg/reconcilers/event_handlers_generated.go` |
 
 ### Template Structure
 
@@ -172,7 +175,8 @@ make dev
   │   ├─ generate-storage
   │   ├─ generate-server
   │   ├─ generate-client
-  │   └─ generate-client-cmd
+  │   ├─ generate-client-cmd
+  │   └─ generate-reconcile  # Generate reconcilers
   ├─ go mod tidy         # Update dependencies
   ├─ go fmt              # Format code
   ├─ make build          # Build binaries
@@ -292,6 +296,97 @@ func List{{.Name}}s(c fuego.ContextNoBody) ([]{{.TypeName}}, error) {
 ```bash
 curl "http://localhost:9999/bmcs?label=datacenter=dc1"
 ```
+
+## Generating Reconcilers
+
+### Reconciler Code Generation
+
+Reconcilers provide declarative infrastructure management through the reconciliation pattern.
+
+**Generate reconcilers:**
+```bash
+go run cmd/codegen/main.go -type reconcile \
+  -output pkg/reconcilers \
+  -package reconcilers
+```
+
+**Generated files:**
+- `bmc_reconciler_generated.go` - BMC reconciler boilerplate
+- `node_reconciler_generated.go` - Node reconciler boilerplate
+- `fru_reconciler_generated.go` - FRU reconciler boilerplate
+- `bootconfiguration_reconciler_generated.go` - BootConfig reconciler
+- `registration_generated.go` - Automatic registration code
+- `event_handlers_generated.go` - Event handler registry
+
+### Customizing Generated Reconcilers
+
+Each reconciler has a stub method ready for implementation:
+
+```go
+// File: pkg/reconcilers/bmc_reconciler_generated.go
+
+func (r *BMCReconciler) reconcileBMC(ctx context.Context, bmc *bmc.BMC) error {
+    // TODO: Implement BMC-specific reconciliation logic here
+    //
+    // Example:
+    //   1. Connect to the BMC using bmc.Spec.Endpoint
+    //   2. Query the BMC status
+    //   3. Update bmc.Status fields
+    //   4. Return any errors
+    
+    // Your implementation here
+    return nil
+}
+```
+
+**Implement reconciliation:**
+```go
+func (r *BMCReconciler) reconcileBMC(ctx context.Context, bmc *bmc.BMC) error {
+    // Connect to BMC
+    client, err := redfish.Connect(bmc.Spec.Endpoint, bmc.Spec.Credentials)
+    if err != nil {
+        return fmt.Errorf("failed to connect: %w", err)
+    }
+    defer client.Logout()
+    
+    // Query status
+    system, err := client.GetSystem()
+    if err != nil {
+        return fmt.Errorf("failed to get system: %w", err)
+    }
+    
+    // Update status fields
+    bmc.Status.Connected = true
+    bmc.Status.PowerState = system.PowerState
+    bmc.Status.Health = system.Health
+    bmc.Status.LastSeen = time.Now()
+    
+    return nil
+}
+```
+
+See [Reconciliation Guide](RECONCILIATION.md) for complete details.
+
+### Reconciler Templates
+
+The reconciler templates generate:
+
+1. **Type-safe reconciler struct** - One per resource type
+2. **Constructor function** - Creates reconciler with dependencies
+3. **Reconcile() method** - Full reconciliation flow with error handling
+4. **reconcile{Name}() stub** - Customization point for resource-specific logic
+5. **Event emission** - Automatic success/error events
+6. **Status updates** - Automatic status persistence
+7. **Condition management** - Helper for setting resource conditions
+
+**Template variables for reconcilers:**
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `{{.Name}}` | Resource name | `BMC`, `Node` |
+| `{{.Package}}` | Resource package path | `github.com/openchami/inventory/pkg/resources/bmc` |
+| `{{.PackageAlias}}` | Package alias | `bmc`, `node` |
+| `{{.TypeName}}` | Fully qualified type | `*bmc.BMC` |
 
 ## Adding Features
 

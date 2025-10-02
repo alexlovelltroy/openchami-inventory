@@ -63,6 +63,19 @@ Start here if you want to **modify or extend** the OpenCHAMI Inventory system:
   - Integration testing
   - Demo scripts
 
+- **[Reconciliation & Events](developer/RECONCILIATION.md)**
+  - Event-driven architecture
+  - Reconciliation pattern
+  - Workflow engine
+  - Developing reconcilers
+  - Event handlers
+
+- **[Reconciler Guide](RECONCILER-GUIDE.md)**
+  - Customizing reconcilers
+  - Cross-resource reactions
+  - Testing reconcilers
+  - Best practices
+
 ## 🎯 Quick Links by Task
 
 ### I want to...
@@ -97,6 +110,14 @@ Start here if you want to **modify or extend** the OpenCHAMI Inventory system:
 
 #### Add a new resource type
 → [Development Guide - How to Add a New Resource](developer/DEVELOPMENT.md#how-to-add-a-new-resource-type)
+
+#### Implement reconciliation logic
+→ [Reconciliation Guide](developer/RECONCILIATION.md)
+→ [Reconciler Development Guide](RECONCILER-GUIDE.md)
+
+#### Understand the event system
+→ [Reconciliation & Events - Event System](developer/RECONCILIATION.md#event-system)
+→ [Development Guide - Event-Driven Reconciliation](developer/DEVELOPMENT.md#event-driven-reconciliation)
 
 #### Modify code generation templates
 → [Code Generation - Modifying Templates](developer/CODE-GENERATION.md#modifying-templates)
@@ -137,6 +158,14 @@ Specific documentation for system components:
 - [Adding Resources](developer/DEVELOPMENT.md#how-to-add-a-new-resource-type)
 - [Testing & Development Mode](developer/TESTING.md)
 
+### Reconciliation & Events
+- [Reconciliation Architecture](developer/RECONCILIATION.md#architecture)
+- [Event System](developer/RECONCILIATION.md#event-system)
+- [Reconciliation Framework](developer/RECONCILIATION.md#reconciliation-framework)
+- [Workflow Engine](developer/RECONCILIATION.md#workflow-engine)
+- [Developing Reconcilers](RECONCILER-GUIDE.md)
+- [Event Handlers](developer/RECONCILIATION.md#event-handlers)
+
 ## 📖 Learning Paths
 
 ### Path 1: New User
@@ -174,6 +203,16 @@ Specific documentation for system components:
 4. [Template Reference](../pkg/codegen/templates/README.md) (reference)
 
 **Time: ~55 minutes + reference material**
+
+### Path 5: Reconciliation Developer
+
+1. [Reconciliation Overview](developer/RECONCILIATION.md#overview) (10 min)
+2. [Event System](developer/RECONCILIATION.md#event-system) (15 min)
+3. [Reconciliation Framework](developer/RECONCILIATION.md#reconciliation-framework) (20 min)
+4. [Developing Reconcilers](developer/RECONCILIATION.md#developing-reconcilers) (30 min)
+5. [Reconciler Guide](RECONCILER-GUIDE.md) (reference)
+
+**Time: ~75 minutes + hands-on practice**
 
 ## 🆘 Getting Help
 
@@ -219,6 +258,8 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for details.
 | Development Guide | ✅ Complete | Oct 2025 |
 | Code Generation | ✅ Complete | Oct 2025 |
 | Testing Guide | ✅ Complete | Oct 2025 |
+| Reconciliation & Events | ✅ Complete | Oct 2025 |
+| Reconciler Guide | ✅ Complete | Oct 2025 |
 
 ## 📧 Documentation Feedback
 

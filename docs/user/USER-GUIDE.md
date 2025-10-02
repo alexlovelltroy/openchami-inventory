@@ -10,6 +10,7 @@ Complete guide for installing, configuring, and using the OpenCHAMI Inventory sy
 - [Using the CLI](#using-the-cli)
 - [Using the REST API](#using-the-rest-api)
 - [Authentication](#authentication)
+- [Reconciliation](#reconciliation)
 - [Version Negotiation](#version-negotiation)
 - [Common Workflows](#common-workflows)
 - [Troubleshooting](#troubleshooting)
@@ -353,6 +354,201 @@ This requires JWT authentication for all operations. You'll need to:
 
 For details, see [AUTHENTICATION.md](./AUTHENTICATION.md).
 
+## Reconciliation
+
+The inventory system uses **event-driven reconciliation** to automatically manage infrastructure resources. This means the system continuously works to align actual state with desired state.
+
+### What is Reconciliation?
+
+**Reconciliation** is the process where the system:
+1. Observes the actual state of resources (e.g., BMC connection status)
+2. Compares it with the desired state (what you defined in the Spec)
+3. Takes actions to align actual state with desired state
+4. Updates the Status to reflect what it observed
+
+This happens automatically:
+- When you create or update resources
+- Periodically (every 5 minutes by default)
+- When related resources change
+
+### How It Works
+
+```
+User creates/updates resource
+    ↓
+Storage emits event
+    ↓
+Reconciliation controller receives event
+    ↓
+Reconciler processes resource
+    ↓
+Actual state aligned with desired state
+    ↓
+Status updated with observed state
+```
+
+### Example: BMC Reconciliation
+
+When you create a BMC resource:
+
+```bash
+./bin/inventory-cli bmc create --spec '{
+  "endpoint": "https://bmc-01.example.com",
+  "username": "admin",
+  "password": "secret"
+}'
+```
+
+The system automatically:
+1. **Connects** to the BMC at the specified endpoint
+2. **Queries** the BMC to get actual state (power state, health, etc.)
+3. **Updates** the Status field with observed information
+4. **Emits events** about the BMC's state (connected, healthy, etc.)
+
+You can see the reconciled status:
+
+```bash
+./bin/inventory-cli bmc get <uid> --output json | jq '.status'
+```
+
+Example output:
+```json
+{
+  "connected": true,
+  "powerState": "On",
+  "health": "OK",
+  "lastSeen": "2025-10-02T10:30:00Z",
+  "conditions": [
+    {
+      "type": "Ready",
+      "status": "True",
+      "lastTransitionTime": "2025-10-02T10:30:00Z",
+      "reason": "ConnectionSuccessful",
+      "message": "BMC is connected and healthy"
+    }
+  ]
+}
+```
+
+### Reactive Behavior
+
+Resources can react to changes in other resources. For example:
+
+**When a BMC connects**, the system automatically:
+- Discovers FRU (Field Replaceable Units) inventory
+- Creates FRU resources
+- Links them to the parent BMC
+
+**When a node is provisioned**, the system automatically:
+- Updates boot configuration
+- Sets appropriate conditions
+- Notifies related systems
+
+### Monitoring Reconciliation
+
+#### Check Resource Status
+
+Every resource has a Status field that shows observed state:
+
+```bash
+# Check BMC status
+./bin/inventory-cli bmc get <uid> --output json | jq '.status'
+
+# Check if BMC is connected
+./bin/inventory-cli bmc get <uid> --output json | jq '.status.connected'
+
+# Check conditions
+./bin/inventory-cli bmc get <uid> --output json | jq '.status.conditions'
+```
+
+#### Conditions
+
+Resources use **conditions** to communicate their state:
+
+| Condition Type | Status | Meaning |
+|----------------|--------|---------|
+| `Ready` | `True` | Resource is ready and healthy |
+| `Ready` | `False` | Resource has issues |
+| `Reconciling` | `True` | Reconciliation in progress |
+| `Error` | `True` | Reconciliation failed |
+| `Maintenance` | `True` | Resource in maintenance mode |
+
+### Configuration
+
+Reconciliation can be configured when starting the server:
+
+```bash
+# Enable reconciliation (default)
+./bin/server --reconcile=true
+
+# Disable reconciliation
+./bin/server --reconcile=false
+
+# Set reconciliation interval
+./bin/server --reconcile-interval=10m
+
+# Set worker count
+./bin/server --reconcile-workers=20
+```
+
+### Troubleshooting Reconciliation
+
+#### Resource Not Reconciling
+
+**Check conditions:**
+```bash
+./bin/inventory-cli bmc get <uid> --output json | jq '.status.conditions'
+```
+
+Look for Error or Reconciling conditions.
+
+#### Connection Failures
+
+If BMC shows `"connected": false`:
+
+1. **Verify endpoint is reachable:**
+   ```bash
+   curl -k https://bmc-01.example.com
+   ```
+
+2. **Check credentials** in the Spec
+
+3. **Look at error condition:**
+   ```bash
+   ./bin/inventory-cli bmc get <uid> --output json | \
+     jq '.status.conditions[] | select(.type == "Error")'
+   ```
+
+#### Reconciliation Disabled
+
+If Status fields aren't updating:
+
+1. **Check if reconciliation is enabled:**
+   ```bash
+   # Server logs will show:
+   # [INFO] Starting reconciliation controller
+   ```
+
+2. **Restart server with reconciliation enabled:**
+   ```bash
+   ./bin/server --reconcile=true
+   ```
+
+### Best Practices
+
+✅ **DO:**
+- Define desired state in Spec fields
+- Check Status fields for actual state
+- Use conditions to understand resource health
+- Let the system handle state alignment automatically
+
+❌ **DON'T:**
+- Manually modify Status fields (they're managed by reconcilers)
+- Expect instant status updates (reconciliation is async)
+- Bypass reconciliation by directly modifying infrastructure
+
+For more details on reconciliation internals, see [Reconciliation & Events Guide](../developer/RECONCILIATION.md).
+
 ## Version Negotiation
 
 The inventory supports multiple schema versions for each resource type.
@@ -556,6 +752,7 @@ For more troubleshooting help, see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).
 - **[API Reference](./API-REFERENCE.md)** - REST API endpoint details
 - **[Version Negotiation](./VERSION-NEGOTIATION.md)** - Multi-version schema guide
 - **[Authentication](./AUTHENTICATION.md)** - Security and policies
+- **[Reconciliation & Events](../developer/RECONCILIATION.md)** - Event-driven architecture (developers)
 - **[Development Guide](../developer/DEVELOPMENT.md)** - Extend the system
 
 ## Getting Help

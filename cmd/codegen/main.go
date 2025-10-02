@@ -19,7 +19,7 @@ func main() {
 		outputDir   = flag.String("output", "./generated", "Output directory for generated code")
 		packageName = flag.String("package", "main", "Package name for generated code")
 		modulePath  = flag.String("module", "github.com/openchami/inventory", "Go module path")
-		genType     = flag.String("type", "all", "Type of code to generate: all, server, client, client-cmd, storage")
+		genType     = flag.String("type", "all", "Type of code to generate: all, server, client, client-cmd, storage, reconcile")
 		runTidy     = flag.Bool("tidy", true, "Run go mod tidy after generation")
 	)
 	flag.Parse()
@@ -101,6 +101,19 @@ func main() {
 		}
 		if err := generator.GenerateClientCmd(); err != nil {
 			log.Fatalf("Failed to generate client-cmd: %v", err)
+		}
+	case "reconcile":
+		if err := generator.LoadTemplates(); err != nil {
+			log.Fatalf("Failed to load templates: %v", err)
+		}
+		if err := generator.GenerateReconcilers(); err != nil {
+			log.Fatalf("Failed to generate reconcilers: %v", err)
+		}
+		if err := generator.GenerateReconcilerRegistration(); err != nil {
+			log.Fatalf("Failed to generate reconciler registration: %v", err)
+		}
+		if err := generator.GenerateEventHandlers(); err != nil {
+			log.Fatalf("Failed to generate event handlers: %v", err)
 		}
 	case "all":
 		if err := generator.GenerateAll(); err != nil {
