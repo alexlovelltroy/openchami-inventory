@@ -255,6 +255,17 @@ func (g *Generator) GenerateAll() error {
 		if err := g.GenerateClientModels(); err != nil {
 			return err
 		}
+	case "reconcile":
+		// Reconciliation code - reconcilers, registration, and event handlers
+		if err := g.GenerateReconcilers(); err != nil {
+			return err
+		}
+		if err := g.GenerateReconcilerRegistration(); err != nil {
+			return err
+		}
+		if err := g.GenerateEventHandlers(); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("unsupported package type: %s", g.PackageName)
 	}
@@ -328,20 +339,109 @@ func (g *Generator) GenerateClientModels() error {
 	return nil
 }
 
+// GenerateReconcilers generates reconciler code for all resources
+func (g *Generator) GenerateReconcilers() error {
+	for _, resource := range g.Resources {
+		var buf bytes.Buffer
+		data := struct {
+			ResourceMetadata
+			ModulePath string
+		}{
+			ResourceMetadata: resource,
+			ModulePath:       g.ModulePath,
+		}
+
+		if err := g.Templates["reconciler"].Execute(&buf, data); err != nil {
+			return fmt.Errorf("failed to execute reconciler template for %s: %w", resource.Name, err)
+		}
+
+		formatted, err := format.Source(buf.Bytes())
+		if err != nil {
+			return fmt.Errorf("failed to format generated reconciler code for %s: %w", resource.Name, err)
+		}
+
+		filename := filepath.Join(g.OutputDir, fmt.Sprintf("%s_reconciler_generated.go", strings.ToLower(resource.Name)))
+		if err := os.WriteFile(filename, formatted, 0644); err != nil {
+			return fmt.Errorf("failed to write reconciler file for %s: %w", resource.Name, err)
+		}
+	}
+
+	return nil
+}
+
+// GenerateReconcilerRegistration generates the reconciler registration code
+func (g *Generator) GenerateReconcilerRegistration() error {
+	var buf bytes.Buffer
+	data := struct {
+		Resources  []ResourceMetadata
+		ModulePath string
+	}{
+		Resources:  g.Resources,
+		ModulePath: g.ModulePath,
+	}
+
+	if err := g.Templates["reconcilerRegistration"].Execute(&buf, data); err != nil {
+		return fmt.Errorf("failed to execute reconciler registration template: %w", err)
+	}
+
+	formatted, err := format.Source(buf.Bytes())
+	if err != nil {
+		return fmt.Errorf("failed to format generated reconciler registration code: %w", err)
+	}
+
+	filename := filepath.Join(g.OutputDir, "registration_generated.go")
+	if err := os.WriteFile(filename, formatted, 0644); err != nil {
+		return fmt.Errorf("failed to write reconciler registration file: %w", err)
+	}
+
+	return nil
+}
+
+// GenerateEventHandlers generates cross-resource event handler code
+func (g *Generator) GenerateEventHandlers() error {
+	var buf bytes.Buffer
+	data := struct {
+		Resources  []ResourceMetadata
+		ModulePath string
+	}{
+		Resources:  g.Resources,
+		ModulePath: g.ModulePath,
+	}
+
+	if err := g.Templates["eventHandlers"].Execute(&buf, data); err != nil {
+		return fmt.Errorf("failed to execute event handlers template: %w", err)
+	}
+
+	formatted, err := format.Source(buf.Bytes())
+	if err != nil {
+		return fmt.Errorf("failed to format generated event handlers code: %w", err)
+	}
+
+	filename := filepath.Join(g.OutputDir, "event_handlers_generated.go")
+	if err := os.WriteFile(filename, formatted, 0644); err != nil {
+		return fmt.Errorf("failed to write event handlers file: %w", err)
+	}
+
+	return nil
+}
+
 // LoadTemplates loads code generation templates from files
 func (g *Generator) LoadTemplates() error {
 	templateDir := filepath.Join("pkg", "codegen", "templates")
 
 	templateFiles := map[string]string{
-		"handlers":     "handlers.go.tmpl",
-		"clientModels": "client-models.go.tmpl",
-		"routes":       "routes.go.tmpl",
-		"storage":      "storage.go.tmpl",
-		"models":       "models.go.tmpl",
-		"client":       "client.go.tmpl",
-		"policies":     "policies.go.tmpl",
-		"clientCmd":    "client-cmd.go.tmpl",
-		"openapi":      "openapi.go.tmpl",
+		"handlers":               "handlers.go.tmpl",
+		"clientModels":           "client-models.go.tmpl",
+		"routes":                 "routes.go.tmpl",
+		"storage":                "storage.go.tmpl",
+		"models":                 "models.go.tmpl",
+		"client":                 "client.go.tmpl",
+		"policies":               "policies.go.tmpl",
+		"clientCmd":              "client-cmd.go.tmpl",
+		"openapi":                "openapi.go.tmpl",
+		"reconciler":             "reconciler.go.tmpl",
+		"reconcilerRegistration": "reconciler-registration.go.tmpl",
+		"eventHandlers":          "event-handlers.go.tmpl",
 	}
 
 	g.Templates = make(map[string]*template.Template)
