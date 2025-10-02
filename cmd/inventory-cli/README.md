@@ -2,236 +2,156 @@
 
 A command-line interface for managing OpenCHAMI inventory resources.
 
-## Installation
+> 📖 **Complete Documentation**: [CLI Reference Guide](../../docs/user/CLI-REFERENCE.md)
 
-Build the CLI:
+## Quick Start
+
+### Installation
 
 ```bash
+# Build everything
+make dev
+
+# Or build just the CLI
 make generate-client-cmd
 go build -o bin/inventory-cli ./cmd/inventory-cli
 ```
 
-Or build everything:
+### Basic Usage
 
 ```bash
-make dev
+# List all BMCs
+./bin/inventory-cli --server http://localhost:9999 bmc list
+
+# Get specific BMC
+./bin/inventory-cli --server http://localhost:9999 bmc get <uid>
+
+# Create BMC
+./bin/inventory-cli --server http://localhost:9999 bmc create --spec '{...}'
 ```
 
-## Usage
+### Quick Reference
 
-### Basic Commands
+**Available Resources:**
+- `bmc` - Baseboard Management Controllers
+- `node` - Compute nodes
+- `fru` - Field Replaceable Units
+- `bootconfiguration` - Boot configurations
 
-The CLI supports standard CRUD operations for all inventory resources:
-
-- `bmc` - Manage BMC (Baseboard Management Controller) resources
-- `node` - Manage Node resources
-- `fru` - Manage FRU (Field Replaceable Unit) resources
-- `bootconfiguration` - Manage Boot Configuration resources
-
-Each resource supports the following subcommands:
-
+**Common Commands:**
 - `list` - List all resources
-- `get [uid]` - Get a specific resource by UID
-- `create` - Create a new resource
-- `update [uid]` - Update an existing resource
-- `delete [uid]` - Delete a resource
+- `get <uid>` - Get specific resource
+- `create` - Create new resource
+- `update <uid>` - Update resource
+- `delete <uid>` - Delete resource
 
-### Global Flags
-
-- `--server` - Inventory server URL (default: `http://localhost:8080`)
+**Global Flags:**
+- `--server` - Server URL (default: `http://localhost:8080`)
+- `--version, -v` - API version (`v1`, `v2beta1`)
+- `--output, -o` - Format (`table`, `json`, `yaml`)
 - `--timeout` - Request timeout (default: `30s`)
-- `--output, -o` - Output format: `table`, `json`, `yaml` (default: `table`)
-- `--version, -v` - API version to request: `v1`, `v2beta1`, etc. (default: server default)
-- `--config` - Config file (default: `$HOME/.inventory-cli.yaml`)
 
-### Environment Variables
-
-All flags can be set via environment variables with the `INVENTORY_` prefix:
+**Environment Variables:**
 
 - `INVENTORY_SERVER` - Server URL
-- `INVENTORY_VERSION` - API version to request
-- `INVENTORY_TIMEOUT` - Request timeout
+- `INVENTORY_VERSION` - API version
+- `INVENTORY_TIMEOUT` - Timeout
 - `INVENTORY_OUTPUT` - Output format
 
-### Examples
+## Configuration File
 
-#### List all BMCs
+Create `~/.inventory-cli.yaml`:
+
+```yaml
+server: http://localhost:9999
+version: v1
+timeout: 30s
+output: table
+```
+
+## Examples
+
+### Basic Operations
 
 ```bash
+# List BMCs
 ./bin/inventory-cli bmc list
-```
 
-#### Get a specific BMC by UID
-
-```bash
+# Get specific BMC
 ./bin/inventory-cli bmc get <uid>
-```
 
-#### Create a new BMC from stdin
-
-```bash
-echo '{
-  "name": "bmc-01",
-  "ipAddress": "10.0.0.100",
-  "macAddress": "aa:bb:cc:dd:ee:ff",
-  "username": "admin",
-  "labels": {
-    "datacenter": "dc1"
-  }
-}' | ./bin/inventory-cli bmc create
-```
-
-#### Create a new BMC with spec flag
-
-```bash
+# Create BMC
 ./bin/inventory-cli bmc create --spec '{
-  "name": "bmc-01",
-  "ipAddress": "10.0.0.100",
-  "macAddress": "aa:bb:cc:dd:ee:ff",
-  "username": "admin"
+  "name": "node001-bmc",
+  "address": "https://10.1.1.100",
+  "username": "admin",
+  "password": "changeme",
+  "type": "Redfish"
 }'
-```
 
-#### Update a BMC
+# Update BMC
+./bin/inventory-cli bmc update <uid> --spec '{"password": "new-password"}'
 
-```bash
-echo '{
-  "ipAddress": "10.0.0.101"
-}' | ./bin/inventory-cli bmc update <uid>
-```
-
-#### Delete a BMC
-
-```bash
+# Delete BMC
 ./bin/inventory-cli bmc delete <uid>
 ```
 
-#### Use JSON output
+### Version Negotiation
 
 ```bash
-./bin/inventory-cli --output json node list
-```
-
-#### Set server URL
-
-```bash
-./bin/inventory-cli --server https://inventory.example.com node list
-```
-
-#### Request specific API version
-
-```bash
-# Get BMC as v1 (basic auth format)
+# Request v1 format
 ./bin/inventory-cli --version v1 bmc get <uid>
 
-# Get BMC as v2beta1 (enhanced auth format)
-./bin/inventory-cli --version v2beta1 bmc get <uid> --output json
-
-# List all BMCs with v2beta1
-./bin/inventory-cli -v v2beta1 bmc list
+# Request v2beta1 format
+./bin/inventory-cli --version v2beta1 bmc get <uid>
 
 # Use environment variable
 export INVENTORY_VERSION=v2beta1
 ./bin/inventory-cli bmc list
 ```
 
-See [CLI Version Examples](../../docs/CLI-VERSION-EXAMPLES.md) for more details.
-
-Or using environment variable:
+### Output Formats
 
 ```bash
-export INVENTORY_SERVER=https://inventory.example.com
-./bin/inventory-cli node list
-```
+# JSON output
+./bin/inventory-cli bmc list --output json
 
-### Configuration File
+# YAML output
+./bin/inventory-cli bmc list --output yaml
 
-You can create a configuration file at `~/.inventory-cli.yaml`:
-
-```yaml
-server: https://inventory.example.com
-timeout: 60s
-output: json
-```
-
-## Resource Examples
-
-### Node Operations
-
-```bash
-# List all nodes
-./bin/inventory-cli node list
-
-# Get a specific node
-./bin/inventory-cli node get <uid>
-
-# Create a node
-echo '{
-  "name": "node-01",
-  "xname": "x1000c0s0b0n0",
-  "nid": 1,
-  "role": "compute"
-}' | ./bin/inventory-cli node create
-
-# Update a node
-echo '{
-  "role": "login"
-}' | ./bin/inventory-cli node update <uid>
-
-# Delete a node
-./bin/inventory-cli node delete <uid>
-```
-
-### FRU Operations
-
-```bash
-# List all FRUs
-./bin/inventory-cli fru list
-
-# Get a specific FRU
-./bin/inventory-cli fru get <uid>
-
-# Create a FRU
-echo '{
-  "name": "fru-01",
-  "type": "chassis",
-  "manufacturer": "HPE"
-}' | ./bin/inventory-cli fru create
-```
-
-### Boot Configuration Operations
-
-```bash
-# List all boot configurations
-./bin/inventory-cli bootconfiguration list
-
-# Get a specific boot configuration
-./bin/inventory-cli bootconfiguration get <uid>
-
-# Create a boot configuration
-echo '{
-  "name": "compute-boot",
-  "kernel": "vmlinuz-5.15",
-  "initrd": "initrd-5.15.img"
-}' | ./bin/inventory-cli bootconfiguration create
+# Table output (default)
+./bin/inventory-cli bmc list
 ```
 
 ## Help
 
-For detailed help on any command:
-
 ```bash
+# General help
 ./bin/inventory-cli --help
+
+# Command-specific help
 ./bin/inventory-cli bmc --help
 ./bin/inventory-cli bmc create --help
 ```
 
-## Code Generation
+## Documentation
 
-This CLI is automatically generated from the resource definitions. To regenerate:
+- **[Complete CLI Reference](../../docs/user/CLI-REFERENCE.md)** - Full command documentation
+- **[User Guide](../../docs/user/USER-GUIDE.md)** - Usage guide and workflows
+- **[Version Negotiation](../../docs/user/VERSION-NEGOTIATION.md)** - Multi-version support
+- **[Troubleshooting](../../docs/user/TROUBLESHOOTING.md)** - Common issues
 
+## Development
+
+This CLI is automatically generated from resource definitions.
+
+**Regenerate:**
 ```bash
 make generate-client-cmd
 ```
 
-The generator uses the template at `pkg/codegen/templates/client-cmd.go.tmpl`.
+**Template:**
+`pkg/codegen/templates/client-cmd.go.tmpl`
+
+**Learn More:**
+- [Code Generation Guide](../../docs/developer/CODE-GENERATION.md)

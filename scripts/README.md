@@ -1,87 +1,68 @@
 # Scripts Directory
 
-Utility scripts for the OpenCHAMI Inventory system.
+> 📖 **Documentation**: [Testing Guide](../docs/developer/TESTING.md) | [Version Negotiation Guide](../docs/user/VERSION-NEGOTIATION.md)
+
+Utility and demo scripts for the OpenCHAMI Inventory system.
+
+## Quick Reference
+
+| Script | Purpose | Usage |
+|--------|---------|-------|
+| `demo-version-negotiation.sh` | Version negotiation demo | Run after starting server |
+| `populate-bmcs.sh` | Create sample data | Run to populate test data |
+| `discover.sh` | Codebase explorer | Run with `make discover` |
+| `templates.sh` | View templates | Run with `make templates` |
 
 ## demo-version-negotiation.sh
 
-Demonstrates the multi-version schema support in the OpenCHAMI Inventory API.
+**Purpose:** Demonstrates multi-version schema support in the API.
 
-### What It Does
-
-This interactive demo script:
-1. Creates a BMC using v1 schema (basic authentication)
-2. Creates a BMC using v2beta1 schema (OIDC authentication)
-3. Retrieves both BMCs in v1 format (backward compatibility)
-4. Retrieves both BMCs in v2beta1 format (forward compatibility)
-5. Shows automatic schema conversion between versions
-6. Displays API version information
-
-### Usage
-
+**Quick Start:**
 ```bash
-# Start the server with auth disabled for testing
+# Terminal 1: Start server
 ./bin/server --port 9999 --disable-auth
 
-# In another terminal, run the demo
+# Terminal 2: Run demo
 ./scripts/demo-version-negotiation.sh
 ```
 
-### Environment Variables
+**What It Demonstrates:**
+1. Creating BMCs in v1 and v2beta1 formats
+2. Version negotiation with CLI `--version` flag
+3. Automatic schema conversion (v1 ↔ v2beta1)
+4. Forward and backward compatibility
+5. Version discovery endpoint
 
+**Environment Variables:**
 - `INVENTORY_SERVER` - Server URL (default: `http://localhost:9999`)
-- `INVENTORY_CLI` - Path to CLI binary (default: `./bin/inventory-cli`)
+- `INVENTORY_CLI` - CLI path (default: `./bin/inventory-cli`)
 
-### Example Output
-
-The script provides step-by-step output showing:
-- Creation of v1 BMC with basic auth (username/password)
-- Creation of v2beta1 BMC with OIDC auth (client credentials)
-- Listing all BMCs with their schema versions
-- Retrieving v1 BMC as v2beta1 (shows auth conversion)
-- Retrieving v2beta1 BMC as v1 (backward compatibility)
-- API version capabilities and supported versions
-
-### Key Concepts Demonstrated
-
-- **Version Negotiation**: Using `Accept: application/json;version=v2beta1` headers
-- **Forward Compatibility**: v1 resources can be read as v2beta1
-- **Backward Compatibility**: v2beta1 resources can be read as v1
-- **Schema Evolution**: New authentication methods in v2beta1
-- **Coexistence**: Multiple schema versions in the same database
+**Learn More:**
+- [Version Negotiation Guide](../docs/user/VERSION-NEGOTIATION.md)
+- [BMC v2beta1 Documentation](../pkg/resources/bmc/v2beta1/README.md)
 
 ## populate-bmcs.sh
 
-Bash script to populate the inventory with 25 sample BMCs using the CLI.
+**Purpose:** Create 25 sample BMCs for testing.
 
-### Usage
-
+**Quick Start:**
 ```bash
-# With server running on default port (8080)
+# With default settings
 ./scripts/populate-bmcs.sh
 
-# With custom server URL
+# With custom server
 INVENTORY_SERVER=http://localhost:9999 ./scripts/populate-bmcs.sh
-
-# With custom CLI path
-INVENTORY_CLI=./bin/inventory-cli ./scripts/populate-bmcs.sh
 ```
 
-### Environment Variables
-
-- `INVENTORY_SERVER` - Server URL (default: `http://localhost:9999`)
-- `INVENTORY_CLI` - Path to CLI binary (default: `./bin/inventory-cli`)
-
-### What It Creates
-
-The script creates 25 BMCs with:
-- Sequential naming: `bmc-001` through `bmc-025`
+**Creates:**
+- 25 BMCs: `bmc-001` through `bmc-025`
 - IP addresses: `10.0.0.100` through `10.0.0.124`
-- MAC addresses: `aa:bb:cc:dd:ee:01` through `aa:bb:cc:dd:ee:19`
-- BMC types: Alternating between `iLO`, `iDRAC`, and `Redfish`
-- Rack organization: 5 BMCs per rack (rack-1 through rack-5)
-- Position labels: U1 through U5 per rack
-- Labels: datacenter, rack, environment
-- Annotations: description, position
+- Types: iLO, iDRAC, Redfish (alternating)
+- Organized in 5 racks with labels and annotations
+
+**Environment Variables:**
+- `INVENTORY_SERVER` - Server URL (default: `http://localhost:9999`)
+- `INVENTORY_CLI` - CLI path (default: `./bin/inventory-cli`)
 
 ## populate-bmcs (Go Tool)
 
@@ -186,19 +167,55 @@ Both scripts follow the same pattern:
 4. Report success/failure for each
 5. Print summary with verification commands
 
+## discover.sh
+
+**Purpose:** Interactive codebase explorer showing structure and status.
+
+**Usage:**
+```bash
+make discover
+# or
+./scripts/discover.sh
+```
+
+**Shows:**
+- Project structure
+- Generated vs manual files
+- Resource definitions
+- Template locations
+- Build status
+
+## templates.sh
+
+**Purpose:** View code generation template content.
+
+**Usage:**
+```bash
+make templates
+# or
+./scripts/templates.sh
+```
+
+**Shows:**
+- All template files
+- Template purposes
+- Quick reference
+
 ## Cleanup
 
-To remove all created BMCs:
-
+**Remove created BMCs:**
 ```bash
-# List and delete all BMCs
+# Using CLI
 for uid in $(./bin/inventory-cli bmc list --output json | jq -r '.[].metadata.uid'); do
     ./bin/inventory-cli bmc delete "$uid"
 done
-```
 
-Or delete the storage directory:
-
-```bash
+# Or delete storage
 rm -rf ./inventory/
 ```
+
+## Documentation
+
+- **[Testing Guide](../docs/developer/TESTING.md)** - Development and testing workflows
+- **[Version Negotiation](../docs/user/VERSION-NEGOTIATION.md)** - Multi-version schema guide
+- **[User Guide](../docs/user/USER-GUIDE.md)** - Using the system

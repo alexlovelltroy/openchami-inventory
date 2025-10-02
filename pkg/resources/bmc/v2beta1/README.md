@@ -239,9 +239,11 @@ Before promoting to v2 stable, we plan to:
 
 ## Related Documentation
 
-- [PROPOSAL-Multi-Schema-Versioning.md](../../../../PROPOSAL-Multi-Schema-Versioning.md) - Overall versioning strategy
-- [pkg/versioning](../../../versioning/) - Version registry and negotiation
+- **[Version Negotiation Guide](../../../../docs/user/VERSION-NEGOTIATION.md)** - Using multi-version schemas
+- **[API Reference](../../../../docs/user/API-REFERENCE.md)** - REST API documentation
+- **[User Guide](../../../../docs/user/USER-GUIDE.md)** - Complete usage guide
 - [BMC v1](../bmc.go) - Original BMC resource definition
+- [Version Registry](../../../versioning/) - Version negotiation internals
 
 ## Feedback
 
@@ -252,4 +254,4 @@ This is a **beta** release. Please provide feedback on:
 - Missing authentication methods
 - Documentation clarity
 
-File issues at: https://github.com/OpenCHAMI/inventory/issues
+**File issues:** https://github.com/OpenCHAMI/inventory/issues

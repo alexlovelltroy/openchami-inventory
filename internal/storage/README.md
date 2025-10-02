@@ -1,11 +1,31 @@
 # Storage System
 
-The OpenCHAMI Inventory storage system is designed to be flexible and pluggable, allowing different storage backends to be used without changing application code.
+> 📖 **For detailed information**, this README contains the complete storage system documentation. For general development, see [Development Guide](../../docs/developer/DEVELOPMENT.md).
 
-## Architecture
+The OpenCHAMI Inventory storage system is flexible and pluggable, allowing different storage backends without changing application code.
 
-### Storage Interface
-The system is built around the `StorageBackend` interface, which defines core storage operations:
+## Quick Overview
+
+**Architecture:**
+- `StorageBackend` interface - Low-level backend operations
+- `ResourceStorage[T]` - Type-safe resource operations
+- Generated code - Automatic storage operations per resource type
+
+**Current Backends:**
+- **File Backend** (default) - JSON files in directory structure
+- **Future**: Database backends (PostgreSQL, SQLite, etc.)
+
+**Directory Structure:**
+```
+inventory/
+├── bmcs/
+│   ├── bmc-123.json
+│   └── bmc-456.json
+├── nodes/
+└── frus/
+```
+
+## Storage Interface
 
 ```go
 type StorageBackend interface {
@@ -19,8 +39,7 @@ type StorageBackend interface {
 }
 ```
 
-### Type-Safe Resource Storage
-On top of the backend interface, the system provides type-safe storage for each resource type:
+## Type-Safe Resource Storage
 
 ```go
 type ResourceStorage[T any] interface {
@@ -33,22 +52,9 @@ type ResourceStorage[T any] interface {
 }
 ```
 
-## Available Backends
+## File Backend (Default)
 
-### File Backend (Default)
-The `FileBackend` stores resources as JSON files in a directory structure:
-
-```
-inventory/
-├── bmcs/
-│   ├── bmc-123.json
-│   └── bmc-456.json
-├── nodes/
-│   ├── node-789.json
-│   └── node-abc.json
-└── frus/
-    └── fru-def.json
-```
+Stores resources as JSON files:
 
 **Features:**
 - Thread-safe with file locking
@@ -306,3 +312,20 @@ for _, bmc := range bmcs {
     }
 }
 ```
+
+## Documentation
+
+For more information:
+
+- **[Development Guide](../../docs/developer/DEVELOPMENT.md)** - General architecture and development
+- **[Code Generation](../../docs/developer/CODE-GENERATION.md)** - How storage code is generated
+- **[User Guide](../../docs/user/USER-GUIDE.md)** - Using the system
+- **[Troubleshooting](../../docs/user/TROUBLESHOOTING.md)** - Storage-related issues
+## Documentation
+
+For more information:
+
+- **[Development Guide](../../docs/developer/DEVELOPMENT.md)** - General architecture and development
+- **[Code Generation](../../docs/developer/CODE-GENERATION.md)** - How storage code is generated
+- **[User Guide](../../docs/user/USER-GUIDE.md)** - Using the system
+- **[Troubleshooting](../../docs/user/TROUBLESHOOTING.md)** - Storage-related issues
