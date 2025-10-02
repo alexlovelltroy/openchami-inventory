@@ -28,10 +28,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
-	"github.com/go-fuego/fuego"
+	"github.com/go-chi/chi/v5"
 	"{{.Package}}"
 	"{{.ModulePath}}/internal/storage"
 	"{{.ModulePath}}/pkg/resources"
@@ -39,106 +40,88 @@ import (
 )
 
 // Get{{.Name}}s returns all {{.Name}} resources
-func Get{{.Name}}s(c fuego.ContextNoBody) ([]{{.TypeName}}, error) {
+func Get{{.Name}}s(w http.ResponseWriter, r *http.Request) {
 {{if .RequiresAuth}}
 	// Check authorization - extract auth context (may be nil for permissive policies)
-	auth, _ := GetAuthFromContext(c.Context())
-	
+	auth, _ := GetAuthFromContext(r.Context())
+
 	if policy, exists := policyRegistry.GetPolicy("{{.Name}}"); exists {
-		if decision := policy.CanList(c.Context(), auth, c.Request()); !decision.Allowed {
+		if decision := policy.CanList(r.Context(), auth, r); !decision.Allowed {
 			status := http.StatusForbidden
 			if auth == nil {
 				status = http.StatusUnauthorized
 			}
-			return nil, fuego.HTTPError{
-				Status: status,
-				Err:    fmt.Errorf("access denied: %s", decision.Reason),
-			}
+			respondError(w, status, fmt.Errorf("access denied: %s", decision.Reason))
+			return
 		}
 	} else {
-		return nil, fuego.HTTPError{
-			Status: http.StatusInternalServerError,
-			Err:    fmt.Errorf("no policy configured for {{.Name}}"),
-		}
+		respondError(w, http.StatusInternalServerError, fmt.Errorf("no policy configured for {{.Name}}"))
+		return
 	}
 {{end}}
 	{{camelCase .PluralName}}, err := storage.LoadAll{{.StorageName}}s()
 	if err != nil {
-		return nil, fuego.HTTPError{
-			Status: http.StatusInternalServerError,
-			Err:    fmt.Errorf("failed to load {{.PluralName}}: %w", err),
-		}
+		respondError(w, http.StatusInternalServerError, fmt.Errorf("failed to load {{.PluralName}}: %w", err))
+		return
 	}
-	return {{camelCase .PluralName}}, nil
+	respondJSON(w, http.StatusOK, {{camelCase .PluralName}})
 }
 
 // Get{{.Name}} returns a specific {{.Name}} resource by UID
-func Get{{.Name}}(c fuego.ContextNoBody) ({{.TypeName}}, error) {
-	uid := c.PathParam("uid")
+func Get{{.Name}}(w http.ResponseWriter, r *http.Request) {
+	uid := chi.URLParam(r, "uid")
 	if uid == "" {
-		return nil, fuego.HTTPError{
-			Status: http.StatusBadRequest,
-			Err:    fmt.Errorf("{{.Name}} UID is required"),
-		}
+		respondError(w, http.StatusBadRequest, fmt.Errorf("{{.Name}} UID is required"))
+		return
 	}
 
 	// Version context available here for version-aware operations
-	// versionCtx := versioning.GetVersionContext(c.Context())
+	// versionCtx := versioning.GetVersionContext(r.Context())
 	// Requested version: versionCtx.ServeVersion
 	// To enable: replace storage.Load{{.StorageName}}() with version-aware function
 
 {{if .RequiresAuth}}
 	// Check authorization - extract auth context (may be nil for permissive policies)
-	auth, _ := GetAuthFromContext(c.Context())
-	
+	auth, _ := GetAuthFromContext(r.Context())
+
 	if policy, exists := policyRegistry.GetPolicy("{{.Name}}"); exists {
-		if decision := policy.CanGet(c.Context(), auth, c.Request(), uid); !decision.Allowed {
+		if decision := policy.CanGet(r.Context(), auth, r, uid); !decision.Allowed {
 			status := http.StatusForbidden
 			if auth == nil {
 				status = http.StatusUnauthorized
 			}
-			return nil, fuego.HTTPError{
-				Status: status,
-				Err:    fmt.Errorf("access denied: %s", decision.Reason),
-			}
+			respondError(w, status, fmt.Errorf("access denied: %s", decision.Reason))
+			return
 		}
 	} else {
-		return nil, fuego.HTTPError{
-			Status: http.StatusInternalServerError,
-			Err:    fmt.Errorf("no policy configured for {{.Name}}"),
-		}
+		respondError(w, http.StatusInternalServerError, fmt.Errorf("no policy configured for {{.Name}}"))
+		return
 	}
 {{end}}
 
 	{{camelCase .Name}}, err := storage.Load{{.StorageName}}(uid)
 	if err != nil {
-		return nil, fuego.HTTPError{
-			Status: http.StatusNotFound,
-			Err:    fmt.Errorf("{{.Name}} not found: %w", err),
-		}
+		respondError(w, http.StatusNotFound, fmt.Errorf("{{.Name}} not found: %w", err))
+		return
 	}
-	return {{camelCase .Name}}, nil
+	respondJSON(w, http.StatusOK, {{camelCase .Name}})
 }
 
 // Create{{.Name}} creates a new {{.Name}} resource
-func Create{{.Name}}(c fuego.ContextWithBody[Create{{.Name}}Request]) ({{.TypeName}}, error) {
-	req, err := c.Body()
-	if err != nil {
-		return nil, fuego.HTTPError{
-			Status: http.StatusBadRequest,
-			Err:    fmt.Errorf("invalid request body: %w", err),
-		}
+func Create{{.Name}}(w http.ResponseWriter, r *http.Request) {
+	var req Create{{.Name}}Request
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
+		return
 	}
 
 	// Get version context from request
-	versionCtx := versioning.GetVersionContext(c.Context())
+	versionCtx := versioning.GetVersionContext(r.Context())
 
 	uid, err := resources.GenerateUIDForResource("{{.Name}}")
 	if err != nil {
-		return nil, fuego.HTTPError{
-			Status: http.StatusInternalServerError,
-			Err:    fmt.Errorf("failed to generate UID: %w", err),
-		}
+		respondError(w, http.StatusInternalServerError, fmt.Errorf("failed to generate UID: %w", err))
+		return
 	}
 
 	{{camelCase .Name}} := &{{.PackageAlias}}.{{.Name}}{
@@ -164,46 +147,38 @@ func Create{{.Name}}(c fuego.ContextWithBody[Create{{.Name}}Request]) ({{.TypeNa
 	resources.SetCondition(&{{camelCase .Name}}.Status.Conditions, "Created", "True", "{{.Name}}Created", "{{.Name}} has been created")
 
 	if err := storage.Save{{.StorageName}}({{camelCase .Name}}); err != nil {
-		return nil, fuego.HTTPError{
-			Status: http.StatusInternalServerError,
-			Err:    fmt.Errorf("failed to save {{.Name}}: %w", err),
-		}
+		respondError(w, http.StatusInternalServerError, fmt.Errorf("failed to save {{.Name}}: %w", err))
+		return
 	}
 
-	return {{camelCase .Name}}, nil
+	respondJSON(w, http.StatusCreated, {{camelCase .Name}})
 }
 
 // Update{{.Name}} updates an existing {{.Name}} resource
-func Update{{.Name}}(c fuego.ContextWithBody[Update{{.Name}}Request]) ({{.TypeName}}, error) {
-	uid := c.PathParam("uid")
+func Update{{.Name}}(w http.ResponseWriter, r *http.Request) {
+	uid := chi.URLParam(r, "uid")
 	if uid == "" {
-		return nil, fuego.HTTPError{
-			Status: http.StatusBadRequest,
-			Err:    fmt.Errorf("{{.Name}} UID is required"),
-		}
+		respondError(w, http.StatusBadRequest, fmt.Errorf("{{.Name}} UID is required"))
+		return
 	}
 
 	{{camelCase .Name}}, err := storage.Load{{.StorageName}}(uid)
 	if err != nil {
-		return nil, fuego.HTTPError{
-			Status: http.StatusNotFound,
-			Err:    fmt.Errorf("{{.Name}} not found: %w", err),
-		}
+		respondError(w, http.StatusNotFound, fmt.Errorf("{{.Name}} not found: %w", err))
+		return
 	}
 
-	req, err := c.Body()
-	if err != nil {
-		return nil, fuego.HTTPError{
-			Status: http.StatusBadRequest,
-			Err:    fmt.Errorf("invalid request body: %w", err),
-		}
+	var req Update{{.Name}}Request
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
+		return
 	}
 
 	// Apply updates
 	if req.Name != "" {
 		{{camelCase .Name}}.SetName(req.Name)
 	}
-	
+
 	// Update labels and annotations
 	for k, v := range req.Labels {
 		{{camelCase .Name}}.SetLabel(k, v)
@@ -216,34 +191,28 @@ func Update{{.Name}}(c fuego.ContextWithBody[Update{{.Name}}Request]) ({{.TypeNa
 	resources.SetCondition(&{{camelCase .Name}}.Status.Conditions, "Updated", "True", "{{.Name}}Updated", "{{.Name}} has been updated")
 
 	if err := storage.Save{{.StorageName}}({{camelCase .Name}}); err != nil {
-		return nil, fuego.HTTPError{
-			Status: http.StatusInternalServerError,
-			Err:    fmt.Errorf("failed to save {{.Name}}: %w", err),
-		}
+		respondError(w, http.StatusInternalServerError, fmt.Errorf("failed to save {{.Name}}: %w", err))
+		return
 	}
 
-	return {{camelCase .Name}}, nil
+	respondJSON(w, http.StatusOK, {{camelCase .Name}})
 }
 
 // Delete{{.Name}} deletes a {{.Name}} resource
-func Delete{{.Name}}(c fuego.ContextNoBody) (*DeleteResponse, error) {
-	uid := c.PathParam("uid")
+func Delete{{.Name}}(w http.ResponseWriter, r *http.Request) {
+	uid := chi.URLParam(r, "uid")
 	if uid == "" {
-		return nil, fuego.HTTPError{
-			Status: http.StatusBadRequest,
-			Err:    fmt.Errorf("{{.Name}} UID is required"),
-		}
+		respondError(w, http.StatusBadRequest, fmt.Errorf("{{.Name}} UID is required"))
+		return
 	}
 
 	if err := storage.Delete{{.StorageName}}(uid); err != nil {
-		return nil, fuego.HTTPError{
-			Status: http.StatusInternalServerError,
-			Err:    fmt.Errorf("failed to delete {{.Name}}: %w", err),
-		}
+		respondError(w, http.StatusInternalServerError, fmt.Errorf("failed to delete {{.Name}}: %w", err))
+		return
 	}
 
-	return &DeleteResponse{
+	respondJSON(w, http.StatusOK, &DeleteResponse{
 		Message: "{{.Name}} deleted successfully",
 		UID:     uid,
-	}, nil
+	})
 }

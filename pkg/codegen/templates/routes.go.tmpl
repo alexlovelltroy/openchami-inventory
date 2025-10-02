@@ -28,16 +28,33 @@
 //
 package main
 
-import "github.com/go-fuego/fuego"
+import (
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+)
 
 // RegisterGeneratedRoutes registers all generated routes
-func RegisterGeneratedRoutes(s *fuego.Server) {
+func RegisterGeneratedRoutes(r chi.Router) {
+	// Apply standard middleware
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+
 {{range .Resources}}
 	// {{.Name}} routes
-	fuego.Get(s, "{{.URLPath}}", Get{{.Name}}s)
-	fuego.Get(s, "{{.URLPath}}/{uid}", Get{{.Name}})
-	fuego.Post(s, "{{.URLPath}}", Create{{.Name}})
-	fuego.Put(s, "{{.URLPath}}/{uid}", Update{{.Name}})
-	fuego.Delete(s, "{{.URLPath}}/{uid}", Delete{{.Name}})
+	r.Route("{{.URLPath}}", func(r chi.Router) {
+		r.Get("/", Get{{.Name}}s)
+		r.Post("/", Create{{.Name}})
+		r.Route("/{uid}", func(r chi.Router) {
+			r.Get("/", Get{{.Name}})
+			r.Put("/", Update{{.Name}})
+			r.Delete("/", Delete{{.Name}})
+		})
+	})
 {{end}}
+
+	// OpenAPI documentation routes
+	r.Get("/openapi.json", ServeOpenAPISpec)
+	r.Get("/docs", ServeSwaggerUI)
 }

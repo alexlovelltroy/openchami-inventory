@@ -75,6 +75,9 @@ func main() {
 		if err := generator.GeneratePolicies(); err != nil {
 			log.Fatalf("Failed to generate policies: %v", err)
 		}
+		if err := generator.GenerateOpenAPI(); err != nil {
+			log.Fatalf("Failed to generate OpenAPI: %v", err)
+		}
 	case "client":
 		if err := generator.LoadTemplates(); err != nil {
 			log.Fatalf("Failed to load templates: %v", err)
