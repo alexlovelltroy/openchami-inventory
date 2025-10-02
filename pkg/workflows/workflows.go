@@ -1,4 +1,3 @@
-package workflows
 // Package workflows provides workflow execution abstraction.
 //
 // This package abstracts workflow execution to support both embedded (go-workflows)
