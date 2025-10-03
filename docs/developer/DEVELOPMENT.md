@@ -155,7 +155,7 @@ You should get something like this:
 }
 ```
 
-### Step 5: Generate Reconciler (Optional)
+### Step 6: Generate Reconciler (Optional)
 
 If your resource needs reconciliation logic:
 
@@ -169,7 +169,7 @@ This generates:
 - Updates `registration_generated.go` - Automatic registration
 - Updates `event_handlers_generated.go` - Event handler registry
 
-### Step 6: Implement Reconciliation Logic (Optional)
+### Step 7: Implement Reconciliation Logic (Optional)
 
 Edit the stub method in `pkg/reconcilers/newtype_reconciler_generated.go`:
 
