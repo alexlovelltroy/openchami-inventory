@@ -43,10 +43,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/openchami/inventory/pkg/resources/bmc"
-	"github.com/openchami/inventory/pkg/resources/boot"
 	"github.com/openchami/inventory/pkg/resources/fru"
-	"github.com/openchami/inventory/pkg/resources/node"
 )
 
 // Common storage errors
@@ -663,30 +660,6 @@ func (s *resourceStorage[T]) SaveWithVersion(ctx context.Context, resource inter
 	}
 
 	return nil
-}
-
-// Convenience functions for getting type-safe storage for each resource type
-// These functions provide a simple way to get properly configured storage
-// for each resource type without having to specify generics manually.
-
-// GetBMCStorage returns type-safe storage for BMC resources
-func GetBMCStorage(backend StorageBackend) ResourceStorage[*bmc.BMC] {
-	return NewResourceStorage[*bmc.BMC](backend, "BMC")
-}
-
-// GetNodeStorage returns type-safe storage for Node resources
-func GetNodeStorage(backend StorageBackend) ResourceStorage[*node.Node] {
-	return NewResourceStorage[*node.Node](backend, "Node")
-}
-
-// GetFRUStorage returns type-safe storage for FRU resources
-func GetFRUStorage(backend StorageBackend) ResourceStorage[*fru.FRU] {
-	return NewResourceStorage[*fru.FRU](backend, "FRU")
-}
-
-// GetBootConfigurationStorage returns type-safe storage for BootConfiguration resources
-func GetBootConfigurationStorage(backend StorageBackend) ResourceStorage[*boot.BootConfiguration] {
-	return NewResourceStorage[*boot.BootConfiguration](backend, "BootConfiguration")
 }
 
 // GetFRUInventorySnapshotStorage returns type-safe storage for FRUInventorySnapshot resources
