@@ -286,3 +286,27 @@ func GetDefaultBackend() StorageBackend {
 	ensureDefaultBackend()
 	return DefaultBackend
 }
+
+{{range .Resources}}
+type {{.Name}}Storage struct {
+    GenericStorage
+}
+
+func Get{{.Name}}Storage(backend StorageBackend) *{{.Name}}Storage {
+    return &{{.Name}}Storage{
+        GenericStorage: backend.ForType("{{.Name}}"),
+    }
+}
+{{end}}
+
+type GenericStorage interface {
+	Load(ctx context.Context, uid string) (interface{}, error)
+	LoadAll(ctx context.Context) ([]interface{}, error)
+	Save(ctx context.Context, resource interface{}) error
+	Delete(ctx context.Context, uid string) error
+	Exists(ctx context.Context, uid string) (bool, error)
+	List(ctx context.Context) ([]string, error)
+	LoadWithVersion(ctx context.Context, uid string, version string) (interface{}, string, error)
+	LoadAllWithVersion(ctx context.Context, version string) ([]interface{}, error)
+	SaveWithVersion(ctx context.Context, resource interface{}, version string) error
+}
