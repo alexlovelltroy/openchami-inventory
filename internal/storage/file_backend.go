@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/openchami/inventory/pkg/versioning"
+	"github.com/alexlovelltroy/fabrica/pkg/versioning"
 )
 
 // FileBackend implements StorageBackend using file-based storage.

@@ -1,12 +1,12 @@
 package fru
 
 import (
-	"github.com/openchami/inventory/pkg/resources"
+	"github.com/alexlovelltroy/fabrica/pkg/resource"
 )
 
 // FRU represents a Field Replaceable Unit in the system
 type FRU struct {
-	resources.Resource
+	resource.Resource
 	Spec   FRUSpec   `json:"spec" yaml:"spec"`
 	Status FRUStatus `json:"status,omitempty" yaml:"status,omitempty"`
 }
@@ -50,7 +50,7 @@ type FRUStatus struct {
 	LastSeen    string                `json:"lastSeen,omitempty" yaml:"lastSeen,omitempty"`       // Last time FRU was detected
 	LastScanned string                `json:"lastScanned,omitempty" yaml:"lastScanned,omitempty"` // Last Redfish scan time
 	Errors      []string              `json:"errors,omitempty" yaml:"errors,omitempty"`           // Current error conditions
-	Conditions  []resources.Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
+	Conditions  []resource.Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
 }
 
 // Request types for code generation
@@ -76,7 +76,7 @@ type UpdateFRURequest struct {
 
 // FRUInventorySnapshot represents a snapshot of FRU inventory at a point in time
 type FRUInventorySnapshot struct {
-	resources.Resource
+	resource.Resource
 	Spec   FRUInventorySnapshotSpec   `json:"spec" yaml:"spec"`
 	Status FRUInventorySnapshotStatus `json:"status,omitempty" yaml:"status,omitempty"`
 }
@@ -96,5 +96,5 @@ type FRUInventorySnapshotStatus struct {
 	FRUCount       int                   `json:"fruCount" yaml:"fruCount"`                         // Total number of FRUs found
 	NewFRUs        int                   `json:"newFrus" yaml:"newFrus"`                           // Number of new FRUs discovered
 	ProcessingTime float64               `json:"processingTime" yaml:"processingTime"`             // Time taken to process in seconds
-	Conditions     []resources.Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"` // Status conditions
+	Conditions     []resource.Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"` // Status conditions
 }

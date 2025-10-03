@@ -3,7 +3,7 @@ package v2beta1
 import (
 	"testing"
 
-	"github.com/openchami/inventory/pkg/resources"
+	"github.com/alexlovelltroy/fabrica/pkg/resource"
 	"github.com/openchami/inventory/pkg/resources/bmc"
 )
 
@@ -38,7 +38,7 @@ func TestConvertV1ToV2Beta1(t *testing.T) {
 	converter := NewBMCConverter()
 
 	v1BMC := &bmc.BMC{
-		Resource: resources.Resource{
+		Resource: resource.Resource{
 			APIVersion:    "inventory/v1",
 			Kind:          "BMC",
 			SchemaVersion: "v1",
@@ -115,7 +115,7 @@ func TestConvertV2Beta1ToV1_BasicAuth(t *testing.T) {
 	converter := NewBMCConverter()
 
 	v2Beta1BMC := &BMC{
-		Resource: resources.Resource{
+		Resource: resource.Resource{
 			APIVersion:    "inventory/v2",
 			Kind:          "BMC",
 			SchemaVersion: "v2beta1",
@@ -173,7 +173,7 @@ func TestConvertV2Beta1ToV1_ClientCertAuth_Fails(t *testing.T) {
 	converter := NewBMCConverter()
 
 	v2Beta1BMC := &BMC{
-		Resource: resources.Resource{
+		Resource: resource.Resource{
 			APIVersion:    "inventory/v2",
 			Kind:          "BMC",
 			SchemaVersion: "v2beta1",
@@ -206,7 +206,7 @@ func TestConvertV2Beta1ToV1_OIDCAuth_Fails(t *testing.T) {
 	converter := NewBMCConverter()
 
 	v2Beta1BMC := &BMC{
-		Resource: resources.Resource{
+		Resource: resource.Resource{
 			APIVersion:    "inventory/v2",
 			Kind:          "BMC",
 			SchemaVersion: "v2beta1",
@@ -240,7 +240,7 @@ func TestRoundTripConversion(t *testing.T) {
 	converter := NewBMCConverter()
 
 	originalV1 := &bmc.BMC{
-		Resource: resources.Resource{
+		Resource: resource.Resource{
 			APIVersion:    "inventory/v1",
 			Kind:          "BMC",
 			SchemaVersion: "v1",

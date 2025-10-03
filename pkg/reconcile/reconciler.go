@@ -35,7 +35,6 @@ import (
 	"time"
 
 	"github.com/openchami/inventory/pkg/events"
-	"github.com/openchami/inventory/pkg/resources"
 )
 
 // Reconciler handles resource reconciliation.
@@ -146,17 +145,22 @@ func (r *BaseReconciler) EmitEvent(ctx context.Context, eventType string, resour
 	}
 
 	// Extract resource kind and UID
-	// Try to get Resource struct (embedded or direct)
+	// Resources should have GetKind() and GetUID() methods via embedded Resource struct
 	var kind, uid string
 
-	// Use type assertion to check for *resources.Resource
-	if res, ok := resource.(*resources.Resource); ok {
-		kind = res.Kind
+	// Use reflection or type assertions to get Kind and UID
+	// Since resource has embedded resource.Resource, we need to use methods
+	type resourceMetadata interface {
+		GetKind() string
+		GetUID() string
+	}
+
+	if res, ok := resource.(resourceMetadata); ok {
+		kind = res.GetKind()
 		uid = res.GetUID()
 	} else {
-		// Try to access Kind and GetUID via reflection/interface
-		// For now, return error if not a Resource pointer
-		return fmt.Errorf("resource does not implement Resource interface")
+		// Try to access via reflection as fallback
+		return fmt.Errorf("resource does not implement required metadata methods")
 	}
 
 	// Create event

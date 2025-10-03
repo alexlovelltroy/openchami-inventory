@@ -7,7 +7,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/openchami/inventory/pkg/codegen"
+	"github.com/alexlovelltroy/fabrica/pkg/codegen"
 	"github.com/openchami/inventory/pkg/resources/bmc"
 	"github.com/openchami/inventory/pkg/resources/boot"
 	"github.com/openchami/inventory/pkg/resources/fru"

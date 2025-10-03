@@ -12,7 +12,7 @@ import (
 	"github.com/stmcginnis/gofish"
 
 	"github.com/openchami/inventory/pkg/crawler"
-	"github.com/openchami/inventory/pkg/resources"
+	"github.com/alexlovelltroy/fabrica/pkg/resource"
 	"github.com/openchami/inventory/pkg/resources/fru"
 )
 
@@ -158,12 +158,12 @@ func runCrawler(cmd *cobra.Command, args []string) error {
 	fmt.Fprintf(os.Stderr, "Successfully connected. Crawling hardware inventory...\n")
 
 	// Generate UIDs for BMC and Node (if we had them)
-	bmcUID, err := resources.GenerateUIDForResource("BMC")
+	bmcUID, err := resource.GenerateUIDForResource("BMC")
 	if err != nil {
 		return fmt.Errorf("failed to generate BMC UID: %w", err)
 	}
 
-	nodeUID, err := resources.GenerateUIDForResource("Node")
+	nodeUID, err := resource.GenerateUIDForResource("Node")
 	if err != nil {
 		return fmt.Errorf("failed to generate Node UID: %w", err)
 	}
@@ -180,7 +180,7 @@ func runCrawler(cmd *cobra.Command, args []string) error {
 
 	// Create inventory snapshot
 	snapshot := &fru.FRUInventorySnapshot{
-		Resource: resources.Resource{
+		Resource: resource.Resource{
 			APIVersion:    "v1",
 			Kind:          "FRUInventorySnapshot",
 			SchemaVersion: "1.0",
@@ -201,7 +201,7 @@ func runCrawler(cmd *cobra.Command, args []string) error {
 	}
 
 	// Initialize snapshot metadata
-	snapshotUID, err := resources.GenerateUIDForResource("FRUInventorySnapshot")
+	snapshotUID, err := resource.GenerateUIDForResource("FRUInventorySnapshot")
 	if err != nil {
 		return fmt.Errorf("failed to generate snapshot UID: %w", err)
 	}
@@ -211,18 +211,18 @@ func runCrawler(cmd *cobra.Command, args []string) error {
 	snapshot.SetAnnotation("crawler.command", fmt.Sprintf("%s %s", os.Args[0], strings.Join(os.Args[1:], " ")))
 
 	// Set initial status
-	resources.SetCondition(&snapshot.Status.Conditions, "Complete", "True", "CrawlComplete", "Inventory crawl completed successfully")
+	resource.SetCondition(&snapshot.Status.Conditions, "Complete", "True", "CrawlComplete", "Inventory crawl completed successfully")
 
 	// Create FRU resources from specs
 	frus := make([]*fru.FRU, len(fruSpecs))
 	for i, spec := range fruSpecs {
-		fruUID, err := resources.GenerateUIDForResource("FRU")
+		fruUID, err := resource.GenerateUIDForResource("FRU")
 		if err != nil {
 			return fmt.Errorf("failed to generate FRU UID: %w", err)
 		}
 
 		fru := &fru.FRU{
-			Resource: resources.Resource{
+			Resource: resource.Resource{
 				APIVersion:    "v1",
 				Kind:          "FRU",
 				SchemaVersion: "1.0",
@@ -251,7 +251,7 @@ func runCrawler(cmd *cobra.Command, args []string) error {
 		fru.SetLabel("snapshot", snapshotUID)
 
 		// Set discovered status
-		resources.SetCondition(&fru.Status.Conditions, "Discovered", "True", "RedfishCrawl", "FRU discovered via Redfish crawl")
+		resource.SetCondition(&fru.Status.Conditions, "Discovered", "True", "RedfishCrawl", "FRU discovered via Redfish crawl")
 
 		frus[i] = fru
 		snapshot.Spec.FRUIDs[i] = fruUID

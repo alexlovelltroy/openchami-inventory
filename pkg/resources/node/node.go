@@ -1,12 +1,12 @@
 package node
 
 import (
-	"github.com/openchami/inventory/pkg/resources"
+	"github.com/alexlovelltroy/fabrica/pkg/resource"
 )
 
 // Node represents a physical or virtual machine
 type Node struct {
-	resources.Resource
+	resource.Resource
 	Spec   NodeSpec   `json:"spec" yaml:"spec"`
 	Status NodeStatus `json:"status,omitempty" yaml:"status,omitempty"`
 }
@@ -44,7 +44,7 @@ type NodeStatus struct {
 	Online      bool                  `json:"online" yaml:"online"`
 	LastBooted  string                `json:"lastBooted,omitempty" yaml:"lastBooted,omitempty"`
 	HealthState string                `json:"healthState,omitempty" yaml:"healthState,omitempty"` // "healthy", "degraded", "failed"
-	Conditions  []resources.Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
+	Conditions  []resource.Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
 }
 
 // Request types for code generation

@@ -3,6 +3,7 @@ module github.com/openchami/inventory
 go 1.24.7
 
 require (
+	github.com/alexlovelltroy/fabrica v0.1.0
 	github.com/cloudevents/sdk-go/v2 v2.16.2
 	github.com/getkin/kin-openapi v0.133.0
 	github.com/go-chi/chi/v5 v5.2.3
@@ -46,3 +47,5 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/alexlovelltroy/fabrica => ../fabrica/fabrica

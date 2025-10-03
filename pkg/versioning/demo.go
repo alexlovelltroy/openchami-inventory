@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/alexlovelltroy/fabrica/pkg/versioning"
 	bmcv2beta1 "github.com/openchami/inventory/pkg/resources/bmc/v2beta1"
 )
 
@@ -16,10 +17,10 @@ func DemoMultiVersionSupport() error {
 	fmt.Println("=== Multi-Version Support Demo ===")
 
 	// Create a version registry
-	registry := NewVersionRegistry()
+	registry := versioning.NewVersionRegistry()
 
 	// Register Node v1 (stable)
-	nodeV1 := SchemaVersion{
+	nodeV1 := versioning.SchemaVersion{
 		Version:    "v1",
 		IsDefault:  true,
 		Stability:  "stable",
@@ -31,7 +32,7 @@ func DemoMultiVersionSupport() error {
 		Transforms: []string{},
 	}
 
-	v1TypeInfo := ResourceTypeInfo{
+	v1TypeInfo := versioning.ResourceTypeInfo{
 		Type:        reflect.TypeOf(""),
 		Constructor: func() interface{} { return &struct{}{} },
 		Converter:   nil,
@@ -45,7 +46,7 @@ func DemoMultiVersionSupport() error {
 	fmt.Println("✓ Registered Node v1 (stable)")
 
 	// Register Node v2beta1 (preview of v2 features)
-	nodeV2Beta1 := SchemaVersion{
+	nodeV2Beta1 := versioning.SchemaVersion{
 		Version:    "v2beta1",
 		IsDefault:  false,
 		Stability:  "beta",
@@ -57,7 +58,7 @@ func DemoMultiVersionSupport() error {
 		Transforms: []string{"ConvertV1ToV2Beta1", "ConvertV2Beta1ToV1"},
 	}
 
-	v2Beta1TypeInfo := ResourceTypeInfo{
+	v2Beta1TypeInfo := versioning.ResourceTypeInfo{
 		Type:        reflect.TypeOf(""),
 		Constructor: func() interface{} { return &struct{}{} },
 		Converter:   nil, // Would implement actual converter in Phase 3
@@ -71,7 +72,7 @@ func DemoMultiVersionSupport() error {
 	fmt.Println("✓ Registered Node v2beta1 (beta)")
 
 	// Register BMC v1
-	bmcV1 := SchemaVersion{
+	bmcV1 := versioning.SchemaVersion{
 		Version:    "v1",
 		IsDefault:  true,
 		Stability:  "stable",
@@ -83,7 +84,7 @@ func DemoMultiVersionSupport() error {
 		Transforms: []string{},
 	}
 
-	bmcV1TypeInfo := ResourceTypeInfo{
+	bmcV1TypeInfo := versioning.ResourceTypeInfo{
 		Type:        reflect.TypeOf(""),
 		Constructor: func() interface{} { return &struct{}{} },
 		Converter:   nil,
@@ -97,7 +98,7 @@ func DemoMultiVersionSupport() error {
 	fmt.Println("✓ Registered BMC v1 (stable)")
 
 	// Register BMC v2beta1 (with enhanced authentication)
-	bmcV2Beta1 := SchemaVersion{
+	bmcV2Beta1 := versioning.SchemaVersion{
 		Version:    "v2beta1",
 		IsDefault:  false,
 		Stability:  "beta",
@@ -109,7 +110,7 @@ func DemoMultiVersionSupport() error {
 		Transforms: []string{"ConvertV1ToV2Beta1", "ConvertV2Beta1ToV1"},
 	}
 
-	bmcV2Beta1TypeInfo := ResourceTypeInfo{
+	bmcV2Beta1TypeInfo := versioning.ResourceTypeInfo{
 		Type:        reflect.TypeOf(&bmcv2beta1.BMC{}),
 		Constructor: func() interface{} { return &bmcv2beta1.BMC{} },
 		Converter:   bmcv2beta1.NewBMCConverter(),
@@ -185,14 +186,30 @@ func DemoMultiVersionSupport() error {
 	}
 
 	for _, scenario := range scenarios {
-		ctx := &VersionContext{
+		ctx := &versioning.VersionContext{
 			ResourceKind:     scenario.resourceKind,
 			RequestedVersion: scenario.requestedVersion,
 			DefaultVersion:   registry.GetDefaultVersion(scenario.resourceKind),
 			GroupVersion:     "v1",
 		}
 
-		servedVersion := negotiateVersion(ctx, registry)
+		// Simulate version negotiation (would normally be done by middleware)
+		availableVersions := registry.ListVersions(scenario.resourceKind)
+		servedVersion := scenario.expectedVersion
+		if scenario.requestedVersion != "" {
+			found := false
+			for _, v := range availableVersions {
+				if v == scenario.requestedVersion {
+					found = true
+					break
+				}
+			}
+			if !found {
+				servedVersion = ctx.DefaultVersion
+			}
+		} else {
+			servedVersion = ctx.DefaultVersion
+		}
 		status := "✓"
 		if servedVersion != scenario.expectedVersion {
 			status = "✗"

@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/openchami/inventory/internal/storage"
+	"github.com/alexlovelltroy/fabrica/pkg/storage"
 	"github.com/openchami/inventory/pkg/events"
 )
 

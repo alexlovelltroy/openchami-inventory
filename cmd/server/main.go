@@ -9,11 +9,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/openchami/inventory/pkg/policies"
+	"github.com/alexlovelltroy/fabrica/pkg/policy"
 	"github.com/openchami/inventory/pkg/resources/bmc"
 	bmcv2beta1 "github.com/openchami/inventory/pkg/resources/bmc/v2beta1"
 	"github.com/openchami/inventory/pkg/resources/node"
-	"github.com/openchami/inventory/pkg/versioning"
+	"github.com/alexlovelltroy/fabrica/pkg/versioning"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -94,7 +94,7 @@ func initializeVersionRegistry() {
 var rootCmd = &cobra.Command{
 	Use:   "inventory-server",
 	Short: "OpenCHAMI Inventory API Server",
-	Long: `A REST API server for managing OpenCHAMI inventory resources.
+	Long: `A REST API server for managing OpenCHAMI inventory resource.
 
 This server provides endpoints for managing BMCs, Nodes, FRUs, and Boot Configurations
 with support for authentication, authorization, and multi-version schema support.`,
@@ -186,11 +186,11 @@ func runServer(cmd *cobra.Command, args []string) {
 	}
 
 	// Initialize policy registry
-	policyRegistry = policies.NewPolicyRegistry()
+	policyRegistry = policy.NewPolicyRegistry()
 
 	if disableAuth {
 		// Use permissive policy for all resources (testing only)
-		permissivePolicy := policies.NewPermissivePolicy()
+		permissivePolicy := policy.NewPermissivePolicy()
 		policyRegistry.RegisterPolicy("BMC", permissivePolicy)
 		policyRegistry.RegisterPolicy("Node", permissivePolicy)
 		policyRegistry.RegisterPolicy("FRU", permissivePolicy)
@@ -216,7 +216,8 @@ func runServer(cmd *cobra.Command, args []string) {
 	r.Use(middleware.Recoverer)
 
 	// Add version negotiation middleware
-	r.Use(versioning.VersionNegotiationMiddleware(versionRegistry))
+	// TODO: Implement ResourceMapper if needed for advanced version routing
+	r.Use(versioning.VersionNegotiationMiddleware(versionRegistry, nil))
 
 	// Add CORS middleware if enabled
 	if corsEnabled {

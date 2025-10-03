@@ -1,12 +1,12 @@
 package bmc
 
 import (
-	"github.com/openchami/inventory/pkg/resources"
+	"github.com/alexlovelltroy/fabrica/pkg/resource"
 )
 
 // BMC represents a Baseboard Management Controller
 type BMC struct {
-	resources.Resource
+	resource.Resource
 	Spec   BMCSpec   `json:"spec" yaml:"spec"`
 	Status BMCStatus `json:"status,omitempty" yaml:"status,omitempty"`
 }
@@ -25,7 +25,7 @@ type BMCStatus struct {
 	Reachable  bool                  `json:"reachable" yaml:"reachable"`
 	Version    string                `json:"version,omitempty" yaml:"version,omitempty"`
 	LastSeen   string                `json:"lastSeen,omitempty" yaml:"lastSeen,omitempty"`
-	Conditions []resources.Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
+	Conditions []resource.Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
 }
 
 // ToSpec converts CreateBMCRequest to BMCSpec (for code generation)

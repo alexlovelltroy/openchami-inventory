@@ -1,7 +1,7 @@
 package boot
 
 import (
-	"github.com/openchami/inventory/pkg/resources"
+	"github.com/alexlovelltroy/fabrica/pkg/resource"
 )
 
 // BootConfiguration represents a boot configuration with versioning support.
@@ -15,7 +15,7 @@ import (
 //   - Users can reference specific versions or use aliases like "latest" or "default"
 //   - Version aliases are resolved at binding time for flexibility
 type BootConfiguration struct {
-	resources.Resource
+	resource.Resource
 	Spec   BootConfigSpec   `json:"spec" yaml:"spec"`
 	Status BootConfigStatus `json:"status,omitempty" yaml:"status,omitempty"`
 }
@@ -58,7 +58,7 @@ type BootConfigStatus struct {
 	IsLatest        bool                  `json:"isLatest" yaml:"isLatest"`                                   // True if this is the latest version
 	IsDefault       bool                  `json:"isDefault" yaml:"isDefault"`                                 // True if this is the default version
 	DeprecatedAfter string                `json:"deprecatedAfter,omitempty" yaml:"deprecatedAfter,omitempty"` // ISO 8601 timestamp when version becomes deprecated
-	Conditions      []resources.Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
+	Conditions      []resource.Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
 }
 
 // Request types for code generation
