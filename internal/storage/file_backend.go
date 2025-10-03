@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 
+	"github.com/openchami/inventory/pkg/resources"
 	"github.com/openchami/inventory/pkg/versioning"
 )
 
@@ -50,6 +52,123 @@ type FileBackend struct {
 	mu              sync.RWMutex
 	closed          bool
 	versionRegistry *versioning.VersionRegistry // Version registry for conversion support
+}
+
+type genericFileStorage struct {
+	backend      *FileBackend
+	resourceType string
+}
+
+// Load implements GenericStorage.Load
+func (g *genericFileStorage) Load(ctx context.Context, uid string) (interface{}, error) {
+	return g.backend.Load(ctx, g.resourceType, uid)
+}
+
+// LoadAll implements GenericStorage.LoadAll
+func (g *genericFileStorage) LoadAll(ctx context.Context) ([]interface{}, error) {
+	rawMessages, err := g.backend.LoadAll(ctx, g.resourceType)
+	if err != nil {
+		return nil, err
+	}
+	results := make([]interface{}, len(rawMessages))
+	for i, v := range rawMessages {
+		results[i] = v
+	}
+	return results, nil
+}
+
+// Delete implements GenericStorage.Delete
+func (g *genericFileStorage) Delete(ctx context.Context, uid string) error {
+	return g.backend.Delete(ctx, g.resourceType, uid)
+}
+
+// Exists implements GenericStorage.Exists
+func (g *genericFileStorage) Exists(ctx context.Context, uid string) (bool, error) {
+	return g.backend.Exists(ctx, g.resourceType, uid)
+}
+
+// List implements GenericStorage.List
+func (g *genericFileStorage) List(ctx context.Context) ([]string, error) {
+	return g.backend.List(ctx, g.resourceType)
+}
+
+// LoadWithVersion implements GenericStorage.LoadWithVersion
+func (g *genericFileStorage) LoadWithVersion(ctx context.Context, uid string, version string) (interface{}, string, error) {
+	return g.backend.LoadWithVersion(ctx, g.resourceType, uid, version)
+}
+
+// LoadAllWithVersion implements GenericStorage.LoadAllWithVersion
+func (g *genericFileStorage) LoadAllWithVersion(ctx context.Context, version string) ([]interface{}, error) {
+	rawMessages, err := g.backend.LoadAllWithVersion(ctx, g.resourceType, version)
+	if err != nil {
+		return nil, err
+	}
+	results := make([]interface{}, len(rawMessages))
+	for i, v := range rawMessages {
+		results[i] = v
+	}
+	return results, nil
+}
+
+func (g *genericFileStorage) Save(ctx context.Context, resource interface{}) error {
+	val := reflect.ValueOf(resource)
+	if val.Kind() != reflect.Ptr {
+		return fmt.Errorf("resource must be a pointer to a struct, but got %T", resource)
+	}
+	elem := val.Elem()
+
+	// Access the nested 'Metadata' field
+	metadataField := elem.FieldByName("Metadata")
+	if !metadataField.IsValid() {
+		return fmt.Errorf("resource of type %T is missing the 'Metadata' field", resource)
+	}
+
+	// Now, access the 'UID' field within the Metadata struct
+	uidField := metadataField.FieldByName("UID")
+	if !uidField.IsValid() || !uidField.CanSet() {
+		return fmt.Errorf("resource of type %T is missing a settable 'UID' field within its Metadata", resource)
+	}
+
+	// Generate and set the UID
+	uid, err := resources.GenerateUIDForResource(g.resourceType)
+	if err != nil {
+		return fmt.Errorf("failed to generate UID: %w", err)
+	}
+	uidField.SetString(uid)
+
+	// Marshal the full resource object
+	data, err := json.Marshal(resource)
+	if err != nil {
+		return fmt.Errorf("failed to marshal resource: %w", err)
+	}
+
+	// Call the underlying backend's save method
+	return g.backend.Save(ctx, g.resourceType, uid, data)
+}
+
+// SaveWithVersion implements GenericStorage.SaveWithVersion
+func (g *genericFileStorage) SaveWithVersion(ctx context.Context, resource interface{}, version string) error {
+	val := reflect.ValueOf(resource)
+	if val.Kind() != reflect.Ptr {
+		return fmt.Errorf("resource must be a pointer to a struct, but got %T", resource)
+	}
+	elem := val.Elem()
+
+	// Access the nested 'Metadata.UID' field
+	uidField := elem.FieldByName("Metadata").FieldByName("UID")
+	if !uidField.IsValid() {
+		return fmt.Errorf("resource of type %T is missing the 'Metadata.UID' field", resource)
+	}
+	uid := uidField.String()
+	if uid == "" {
+		return fmt.Errorf("resource UID is empty, cannot save with version")
+	}
+
+	data, err := json.Marshal(resource)
+	if err != nil {
+		return err
+	}
+	return g.backend.SaveWithVersion(ctx, g.resourceType, uid, data, version)
 }
 
 // NewFileBackend creates a new file-based storage backend.
@@ -620,4 +739,11 @@ func (f *FileBackend) SaveWithVersion(ctx context.Context, resourceType, uid str
 
 	// Save in storage version
 	return f.Save(ctx, resourceType, uid, json.RawMessage(storageData))
+}
+
+func (f *FileBackend) ForType(resourceType string) GenericStorage {
+	return &genericFileStorage{
+		backend:      f,
+		resourceType: resourceType,
+	}
 }
