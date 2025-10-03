@@ -37,6 +37,7 @@ import (
 	"fmt"
 	"go/format"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -117,24 +118,8 @@ func (g *Generator) RegisterResource(resourceType interface{}) error {
 	var packageImport, typePrefix string
 
 	// Map the new package structure
-	switch {
-	case strings.Contains(pkgPath, "/bmc"):
-		packageImport = "github.com/openchami/inventory/pkg/resources/bmc"
-		typePrefix = "bmc"
-	case strings.Contains(pkgPath, "/node"):
-		packageImport = "github.com/openchami/inventory/pkg/resources/node"
-		typePrefix = "node"
-	case strings.Contains(pkgPath, "/fru"):
-		packageImport = "github.com/openchami/inventory/pkg/resources/fru"
-		typePrefix = "fru"
-	case strings.Contains(pkgPath, "/boot"):
-		packageImport = "github.com/openchami/inventory/pkg/resources/boot"
-		typePrefix = "boot"
-	default:
-		// Fallback for resources package
-		packageImport = "github.com/openchami/inventory/pkg/resources"
-		typePrefix = "resources"
-	}
+	packageImport = pkgPath
+	typePrefix = path.Base(pkgPath)
 
 	// Initialize default version metadata
 	defaultVersion := versioning.SchemaVersion{
