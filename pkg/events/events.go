@@ -1,42 +1,34 @@
-// Package events provides a CloudEvents-based event system for inventory resources.
+// Package events provides inventory-specific event utilities.
 //
-// This package implements event publishing and subscription using the CloudEvents
-// standard (https://cloudevents.io/), enabling interoperability with external systems
-// and cloud-native event tooling.
+// This package re-exports the fabrica event system and provides
+// inventory-specific event creation helpers.
 package events
 
 import (
-	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
-	"time"
 
-	cloudevents "github.com/cloudevents/sdk-go/v2"
+	"github.com/alexlovelltroy/fabrica/pkg/events"
 )
 
-// Event wraps CloudEvents specification
-type Event struct {
-	cloudevents.Event
-}
+// Re-export fabrica event types for backwards compatibility
+type (
+	Event          = events.Event
+	EventHandler   = events.EventHandler
+	SubscriptionID = events.SubscriptionID
+	EventBus       = events.EventBus
+)
 
-// NewEvent creates a CloudEvents-compliant event
-func NewEvent(eventType, source string, data interface{}) (*Event, error) {
-	event := cloudevents.NewEvent()
-	event.SetID(generateEventID())
-	event.SetType(eventType)
-	event.SetSource(source)
-	event.SetTime(time.Now())
-	event.SetDataContentType("application/json")
+// Re-export fabrica event functions
+var (
+	NewEvent          = events.NewEvent
+	NewInMemoryEventBus = events.NewInMemoryEventBus
+)
 
-	if err := event.SetData(cloudevents.ApplicationJSON, data); err != nil {
-		return nil, fmt.Errorf("failed to set event data: %w", err)
-	}
-
-	return &Event{Event: event}, nil
-}
-
-// NewResourceEvent creates an event for a resource change
+// NewResourceEvent creates an inventory-specific resource event
+//
+// This wraps the fabrica NewResourceEvent with inventory-specific conventions:
+//   - Source format: /inventory/{kind}/{uid}
+//   - Extension attributes: inventoryresourcekind, inventoryresourceuid
 func NewResourceEvent(eventType, resourceKind, resourceUID string, data interface{}) (*Event, error) {
 	source := fmt.Sprintf("/inventory/%s/%s", resourceKind, resourceUID)
 	event, err := NewEvent(eventType, source, data)
@@ -51,19 +43,15 @@ func NewResourceEvent(eventType, resourceKind, resourceUID string, data interfac
 	return event, nil
 }
 
-// ResourceKind returns the resource kind extension attribute
-func (e *Event) ResourceKind() string {
+// ResourceKind returns the inventory resource kind extension attribute
+func ResourceKind(e Event) string {
 	if val, ok := e.Extensions()["inventoryresourcekind"]; ok {
 		if s, ok := val.(string); ok {
 			return s
 		}
 	}
-	return ""
-}
-
-// ResourceUID returns the resource UID extension attribute
-func (e *Event) ResourceUID() string {
-	if val, ok := e.Extensions()["inventoryresourceuid"]; ok {
+	// Fallback to generic resourcekind
+	if val, ok := e.Extensions()["resourcekind"]; ok {
 		if s, ok := val.(string); ok {
 			return s
 		}
@@ -71,30 +59,18 @@ func (e *Event) ResourceUID() string {
 	return ""
 }
 
-// EventHandler processes CloudEvents
-type EventHandler func(ctx context.Context, event Event) error
-
-// SubscriptionID uniquely identifies a subscription
-type SubscriptionID string
-
-// EventBus manages event publishing and subscription
-type EventBus interface {
-	// Publish a CloudEvent
-	Publish(ctx context.Context, event Event) error
-
-	// Subscribe to events by type pattern (supports wildcards)
-	Subscribe(eventType string, handler EventHandler) (SubscriptionID, error)
-
-	// Unsubscribe from events
-	Unsubscribe(id SubscriptionID) error
-
-	// Close the event bus
-	Close() error
-}
-
-// generateEventID generates a unique event ID
-func generateEventID() string {
-	b := make([]byte, 16)
-	rand.Read(b)
-	return "evt-" + hex.EncodeToString(b)[:12]
+// ResourceUID returns the inventory resource UID extension attribute
+func ResourceUID(e Event) string {
+	if val, ok := e.Extensions()["inventoryresourceuid"]; ok {
+		if s, ok := val.(string); ok {
+			return s
+		}
+	}
+	// Fallback to generic resourceuid
+	if val, ok := e.Extensions()["resourceuid"]; ok {
+		if s, ok := val.(string); ok {
+			return s
+		}
+	}
+	return ""
 }

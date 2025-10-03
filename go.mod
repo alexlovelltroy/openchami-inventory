@@ -4,16 +4,15 @@ go 1.24.7
 
 require (
 	github.com/alexlovelltroy/fabrica v0.1.0
-	github.com/cloudevents/sdk-go/v2 v2.16.2
 	github.com/getkin/kin-openapi v0.133.0
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
 	github.com/stmcginnis/gofish v0.20.0
-	golang.org/x/text v0.29.0
 )
 
 require (
+	github.com/cloudevents/sdk-go/v2 v2.16.2 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
@@ -44,6 +43,7 @@ require (
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	golang.org/x/sys v0.36.0 // indirect
+	golang.org/x/text v0.29.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
