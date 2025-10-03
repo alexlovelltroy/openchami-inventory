@@ -97,7 +97,13 @@ if err := generator.RegisterResource(&newtype.NewType{}); err != nil {
 }
 ```
 
-### Step 3: Regenerate Code
+### Step 3: Register Resource Prefix
+Add to `pkg/resources/main.go`:
+```go
+RegisterResourcePrefix("NewType", "nt")
+```
+
+### Step 4: Regenerate Code
 ```bash
 make dev
 ```
@@ -109,7 +115,47 @@ This automatically generates:
 - Storage operations
 - Request/response types
 
-### Step 4: Generate Reconciler (Optional)
+### Step 5: Test the code
+Start server
+```bash
+./bin/server
+```
+
+Add a new device to ensure it was successfully created
+```bash
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"name": "MyTestObject", "spec": {"fieldOne": "hello", "fieldTwo": "world"}}' \
+  http://localhost:8080/newtypes
+```
+
+You should get something like this:
+```json
+{
+  "apiVersion": "v1",
+  "kind": "NewType",
+  "schemaVersion": "v1",
+  "metadata": {
+    "name": "MyTestObject",
+    "uid": "nt-d67c06b1",
+    "createdAt": "2025-10-03T14:02:00.257301-07:00",
+    "updatedAt": "2025-10-03T14:02:00.257301-07:00"
+  },
+  "spec": {},
+  "status": {
+    "conditions": [
+      {
+        "type": "Created",
+        "status": "True",
+        "reason": "NewTypeCreated",
+        "message": "NewType has been created",
+        "lastTransitionTime": "2025-10-03T14:02:00.257302-07:00"
+      }
+    ]
+  }
+}
+```
+
+### Step 5: Generate Reconciler (Optional)
 
 If your resource needs reconciliation logic:
 
@@ -123,7 +169,7 @@ This generates:
 - Updates `registration_generated.go` - Automatic registration
 - Updates `event_handlers_generated.go` - Event handler registry
 
-### Step 5: Implement Reconciliation Logic (Optional)
+### Step 6: Implement Reconciliation Logic (Optional)
 
 Edit the stub method in `pkg/reconcilers/newtype_reconciler_generated.go`:
 
