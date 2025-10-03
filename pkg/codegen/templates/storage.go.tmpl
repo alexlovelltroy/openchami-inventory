@@ -87,9 +87,20 @@ func LoadAll{{.StorageName}}s() ([]{{.TypeName}}, error) {
 // This is a convenience function that uses storage.DefaultBackend.
 // For more control, use storage.Get{{.Name}}Storage(backend).Load(ctx, uid).
 func Load{{.StorageName}}(uid string) ({{.TypeName}}, error) {
-	ensureDefaultBackend()
-	storage := Get{{.Name}}Storage(DefaultBackend)
-	return storage.Load(context.Background(), uid)
+    ensureDefaultBackend()
+    storage := Get{{.Name}}Storage(DefaultBackend)
+
+    res, err := storage.Load(context.Background(), uid)
+    if err != nil {
+        return nil, err
+    }
+
+    typedRes, ok := res.({{.TypeName}})
+    if !ok {
+        return nil, fmt.Errorf("unexpected type: got %T, want {{.TypeName}}", res)
+    }
+
+    return typedRes, nil
 }
 
 // Save{{.StorageName}} stores a {{.Name}} resource using the default backend.
@@ -207,9 +218,24 @@ func Load{{.StorageName}}WithVersion(uid string, version string) (interface{}, s
 //       }
 //   }
 func LoadAll{{.StorageName}}sWithVersion(version string) ([]interface{}, error) {
-	ensureDefaultBackend()
-	storage := Get{{.Name}}Storage(DefaultBackend)
-	return storage.LoadAllWithVersion(context.Background(), version)
+    ensureDefaultBackend()
+    storage := Get{{.Name}}Storage(DefaultBackend)
+
+    results, err := storage.LoadAll(context.Background())
+    if err != nil {
+        return nil, err
+    }
+
+    typedResults := make([]{{.TypeName}}, len(results))
+    for i, res := range results {
+        typedRes, ok := res.({{.TypeName}})
+        if !ok {
+            return nil, fmt.Errorf("unexpected type in slice at index %d: got %T, want {{.TypeName}}", i, res)
+        }
+        typedResults[i] = typedRes
+    }
+
+    return typedResults, nil
 }
 
 // Save{{.StorageName}}WithVersion stores a {{.Name}} resource with version information.
