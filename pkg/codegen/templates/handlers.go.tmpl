@@ -130,7 +130,7 @@ func Create{{.Name}}(w http.ResponseWriter, r *http.Request) {
 			Kind:          "{{.Name}}",
 			SchemaVersion: versionCtx.ServeVersion,
 		},
-		// Spec: TODO: Convert from req
+		Spec: req.Spec,
 	}
 
 	{{camelCase .Name}}.Metadata.Initialize(req.Name, uid)
