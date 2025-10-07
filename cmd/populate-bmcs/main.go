@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/openchami/inventory/pkg/client"
+	"github.com/openchami/inventory/pkg/resources/bmc"
 )
 
 func main() {
@@ -55,22 +56,25 @@ func main() {
 			bmcType = "Redfish"
 		}
 
-		// Create request - BMCSpec fields are embedded inline
-		req := client.CreateBMCRequest{}
-		req.Address = ip
-		req.Username = "admin"
-		req.Password = "changeme"
-		req.Type = bmcType
-		req.Name = fmt.Sprintf("bmc-%03d", i)
-		req.Labels = map[string]string{
-			"datacenter":  "dc1",
-			"rack":        fmt.Sprintf("rack-%d", rack),
-			"environment": "production",
-			"mac":         mac, // Store MAC in labels since BMCSpec doesn't have it
-		}
-		req.Annotations = map[string]string{
-			"description": fmt.Sprintf("Sample BMC #%d", i),
-			"position":    fmt.Sprintf("U%d", position),
+		// Create request with Spec field
+		req := client.CreateBMCRequest{
+			Name: fmt.Sprintf("bmc-%03d", i),
+			Labels: map[string]string{
+				"datacenter":  "dc1",
+				"rack":        fmt.Sprintf("rack-%d", rack),
+				"environment": "production",
+				"mac":         mac,
+			},
+			Annotations: map[string]string{
+				"description": fmt.Sprintf("Sample BMC #%d", i),
+				"position":    fmt.Sprintf("U%d", position),
+			},
+			Spec: bmc.BMCSpec{
+				Address:  ip,
+				Username: "admin",
+				Password: "changeme",
+				Type:     bmcType,
+			},
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
